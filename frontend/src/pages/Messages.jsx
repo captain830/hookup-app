@@ -7,6 +7,10 @@ import toast from 'react-hot-toast';
 import EmojiPicker from 'emoji-picker-react';
 import CallModal from '../components/CallModal';
 
+// Use environment variables for API URLs
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+
 export default function Messages() {
   const { userId } = useParams();
   const [messages, setMessages] = useState([]);
@@ -29,8 +33,8 @@ export default function Messages() {
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
-  const userIdRef = useRef(userId); // Use ref to avoid stale closures
-  const userRef = useRef(user); // Use ref for user
+  const userIdRef = useRef(userId);
+  const userRef = useRef(user);
 
   // Update refs when values change
   useEffect(() => {
@@ -46,15 +50,15 @@ export default function Messages() {
     return { headers: { 'Authorization': `Bearer ${token}` } };
   };
 
-  // Load user and messages
+  // Load user and messages - USING ENV VAR
   useEffect(() => {
     let isMounted = true;
     
     const fetchData = async () => {
       try {
         const [userResponse, messagesResponse] = await Promise.all([
-          axios.get(`http://localhost:5000/api/users/${userId}`, getAuthHeaders()),
-          axios.get(`http://localhost:5000/api/messages/conversation/${userId}`, getAuthHeaders())
+          axios.get(`${API_URL}/users/${userId}`, getAuthHeaders()),
+          axios.get(`${API_URL}/messages/conversation/${userId}`, getAuthHeaders())
         ]);
         
         if (isMounted) {
@@ -82,14 +86,13 @@ export default function Messages() {
     return () => { isMounted = false; };
   }, [userId]);
 
-  // Setup socket with improved connection management
+  // Setup socket - USING ENV VAR
   useEffect(() => {
     if (loading || !otherUser) return;
     
     console.log('🔌 Setting up socket for chat with user:', userId);
     
-    // Create socket connection
-    socketRef.current = io('http://localhost:5000', {
+    socketRef.current = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       upgrade: true,
       reconnection: true,
@@ -102,13 +105,11 @@ export default function Messages() {
     socketRef.current.on('connect', () => {
       console.log('✅ Socket connected with ID:', socketRef.current.id);
       
-      // IMPORTANT: Always emit user-online when socket connects
       if (userRef.current?.id) {
         console.log('👤 Emitting user-online for user:', userRef.current.id);
         socketRef.current.emit('user-online', userRef.current.id);
       }
       
-      // Join chat room
       const roomId = [userRef.current.id, parseInt(userIdRef.current)].sort().join('-');
       console.log('🏠 Joining chat room:', roomId);
       socketRef.current.emit('join-chat', roomId);
@@ -120,7 +121,6 @@ export default function Messages() {
 
     socketRef.current.on('reconnect', (attemptNumber) => {
       console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
-      // Re-emit user-online on reconnect
       if (userRef.current?.id) {
         socketRef.current.emit('user-online', userRef.current.id);
         const roomId = [userRef.current.id, parseInt(userIdRef.current)].sort().join('-');
@@ -132,7 +132,6 @@ export default function Messages() {
       console.error('❌ Socket connection error:', error);
     });
 
-    // Handle incoming messages
     socketRef.current.on('new-message', (message) => {
       console.log('📨 New message received:', message);
       if (message.from === parseInt(userIdRef.current)) {
@@ -153,12 +152,10 @@ export default function Messages() {
       }
     });
 
-    // Handle message delivery confirmation
     socketRef.current.on('message-delivered', ({ messageId, tempId }) => {
       setSendingStatus(prev => ({ ...prev, [tempId || messageId]: 'delivered' }));
     });
 
-    // Handle message read confirmation
     socketRef.current.on('messages-read', ({ by, from }) => {
       if (from === userRef.current.id) {
         setMessages(prev => prev.map(msg => 
@@ -167,7 +164,6 @@ export default function Messages() {
       }
     });
 
-    // Handle typing indicator
     socketRef.current.on('user-typing', ({ from, isTyping: typing }) => {
       if (from === parseInt(userIdRef.current)) {
         setIsTyping(typing);
@@ -177,7 +173,6 @@ export default function Messages() {
       }
     });
 
-    // Handle user status changes
     socketRef.current.on('user-status-changed', ({ userId: changedUserId, status }) => {
       console.log('👤 User status changed:', changedUserId, status);
       if (changedUserId === parseInt(userIdRef.current) || changedUserId == userIdRef.current) {
@@ -187,11 +182,9 @@ export default function Messages() {
 
     // ========== CALL HANDLING ==========
     
-    // Handle incoming call
     socketRef.current.on('incoming-call', ({ from, isVideo, callerInfo }) => {
       console.log('📞 Incoming call from:', from, 'Current user:', userRef.current.id);
       
-      // Only show incoming call if it's from the current chat user
       if (from === parseInt(userIdRef.current) && from !== userRef.current.id) {
         console.log('✅ Showing incoming call UI');
         setIncomingCall({ 
@@ -200,7 +193,6 @@ export default function Messages() {
           callerInfo
         });
         
-        // Play ringtone
         try {
           const audio = new Audio('/ringtone.mp3');
           audio.loop = true;
@@ -212,7 +204,6 @@ export default function Messages() {
       }
     });
 
-    // Handle call accepted
     socketRef.current.on('call-accepted', ({ from }) => {
       console.log('✅ Call accepted by:', from);
       stopRingtone();
@@ -222,7 +213,6 @@ export default function Messages() {
       }
     });
 
-    // Handle call rejected
     socketRef.current.on('call-rejected', ({ from, reason }) => {
       console.log('❌ Call rejected:', reason);
       stopRingtone();
@@ -234,7 +224,6 @@ export default function Messages() {
       }
     });
 
-    // Handle call ended
     socketRef.current.on('call-ended', ({ from }) => {
       console.log('🔴 Call ended by:', from);
       stopRingtone();
@@ -246,12 +235,10 @@ export default function Messages() {
       }
     });
 
-    // Handle call errors - IMPROVED
     socketRef.current.on('call-error', ({ message, code }) => {
       console.error('❌ Call error:', message, code);
       stopRingtone();
       
-      // Don't close call modal immediately for some errors
       if (code === 'USER_OFFLINE') {
         toast.error(`${otherUser?.name || 'User'} is offline. They will be notified when you call.`);
       } else {
@@ -291,7 +278,7 @@ export default function Messages() {
 
   const markMessagesAsRead = async () => {
     try {
-      await axios.put(`http://localhost:5000/api/messages/read/${userId}`, {}, getAuthHeaders());
+      await axios.put(`${API_URL}/messages/read/${userId}`, {}, getAuthHeaders());
       if (socketRef.current) {
         socketRef.current.emit('mark-read', { from: parseInt(userId), to: user.id });
       }
@@ -327,7 +314,7 @@ export default function Messages() {
     
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/messages/send',
+        `${API_URL}/messages/send`,
         { to: parseInt(userId), message: messageText },
         getAuthHeaders()
       );
@@ -395,10 +382,10 @@ export default function Messages() {
     scrollToBottom();
     
     try {
-      const response = await axios.post('http://localhost:5000/api/messages/upload-image', formData, getAuthHeaders());
+      const response = await axios.post(`${API_URL}/messages/upload-image`, formData, getAuthHeaders());
       
       const imageMsg = await axios.post(
-        'http://localhost:5000/api/messages/send',
+        `${API_URL}/messages/send`,
         { to: parseInt(userId), message: '📷 Sent an image', image: response.data.imageUrl },
         getAuthHeaders()
       );
@@ -444,7 +431,7 @@ export default function Messages() {
   const handleDeleteMessage = async (messageId) => {
     if (confirm('Delete this message?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/messages/message/${messageId}`, getAuthHeaders());
+        await axios.delete(`${API_URL}/messages/message/${messageId}`, getAuthHeaders());
         setMessages(prev => prev.filter(m => m.id !== messageId));
         toast.success('Message deleted');
       } catch (error) {
@@ -456,7 +443,7 @@ export default function Messages() {
   const handleDeleteConversation = async () => {
     if (confirm('Delete entire conversation? This cannot be undone.')) {
       try {
-        await axios.delete(`http://localhost:5000/api/messages/conversation/${userId}`, getAuthHeaders());
+        await axios.delete(`${API_URL}/messages/conversation/${userId}`, getAuthHeaders());
         setMessages([]);
         toast.success('Conversation deleted');
         navigate('/chats');
@@ -469,7 +456,7 @@ export default function Messages() {
   const handleBlockUser = async () => {
     if (confirm(`Block ${otherUser?.name}? You won't receive messages from them.`)) {
       try {
-        await axios.post(`http://localhost:5000/api/messages/block/${userId}`, {}, getAuthHeaders());
+        await axios.post(`${API_URL}/messages/block/${userId}`, {}, getAuthHeaders());
         toast.success(`${otherUser?.name} has been blocked`);
         navigate('/chats');
       } catch (error) {
@@ -482,7 +469,7 @@ export default function Messages() {
     const reason = prompt('Why are you reporting this user?');
     if (reason) {
       try {
-        await axios.post(`http://localhost:5000/api/messages/report/${userId}`, { reason }, getAuthHeaders());
+        await axios.post(`${API_URL}/messages/report/${userId}`, { reason }, getAuthHeaders());
         toast.success('User reported. Our team will review.');
       } catch (error) {
         toast.error('Failed to report user');
@@ -490,21 +477,18 @@ export default function Messages() {
     }
   };
 
-  // ========== IMPROVED CALL HANDLERS ==========
+  // ========== CALL HANDLERS ==========
   
   const startVideoCall = () => {
     console.log('🎥 Starting video call to user:', userId);
     
-    // Check socket connection first
     if (!socketRef.current?.connected) {
       toast.error('Connecting to server... Please try again in a moment.');
       return;
     }
     
-    // Make sure we've emitted user-online
     socketRef.current.emit('user-online', user.id);
     
-    // Small delay to ensure user-online is processed
     setTimeout(() => {
       if (socketRef.current) {
         console.log('📞 Emitting call-user event:', {
@@ -529,16 +513,13 @@ export default function Messages() {
   const startVoiceCall = () => {
     console.log('📞 Starting voice call to user:', userId);
     
-    // Check socket connection first
     if (!socketRef.current?.connected) {
       toast.error('Connecting to server... Please try again in a moment.');
       return;
     }
     
-    // Make sure we've emitted user-online
     socketRef.current.emit('user-online', user.id);
     
-    // Small delay to ensure user-online is processed
     setTimeout(() => {
       if (socketRef.current) {
         console.log('📞 Emitting call-user event:', {
@@ -593,7 +574,6 @@ export default function Messages() {
 
   const handleCloseCall = () => {
     stopRingtone();
-    // Don't emit end-call here - CallModal already handles it
     setShowCallModal(false);
     setIncomingCall(null);
     setCallStatus(null);
@@ -806,32 +786,32 @@ export default function Messages() {
         </div>
       </div>
 
-{/* ✅ SINGLE CALL MODAL - Now passes socket prop */}
-{(showCallModal || incomingCall) && (
-  <CallModal
-    isVideo={incomingCall ? incomingCall.isVideo : isVideoCall}
-    onClose={() => {
-      stopRingtone();
-      if (socketRef.current) {
-        socketRef.current.emit('end-call', {
-          to: incomingCall ? incomingCall.from : parseInt(userId),
-          from: user.id
-        });
-      }
-      setShowCallModal(false);
-      setIncomingCall(null);
-      setCallStatus(null);
-    }}
-    onAccept={incomingCall ? acceptCall : undefined}
-    otherUserId={incomingCall ? incomingCall.from : parseInt(userId)}
-    otherUserName={otherUser?.name || 'User'}
-    otherUserPhoto={otherUser?.photos?.[0]}
-    currentUserId={user?.id}
-    isIncoming={!!incomingCall}
-    callStatus={incomingCall ? 'ringing' : callStatus}
-    socket={socketRef.current}   
-  />
-)}
+      {/* Call Modal */}
+      {(showCallModal || incomingCall) && (
+        <CallModal
+          isVideo={incomingCall ? incomingCall.isVideo : isVideoCall}
+          onClose={() => {
+            stopRingtone();
+            if (socketRef.current) {
+              socketRef.current.emit('end-call', {
+                to: incomingCall ? incomingCall.from : parseInt(userId),
+                from: user.id
+              });
+            }
+            setShowCallModal(false);
+            setIncomingCall(null);
+            setCallStatus(null);
+          }}
+          onAccept={incomingCall ? acceptCall : undefined}
+          otherUserId={incomingCall ? incomingCall.from : parseInt(userId)}
+          otherUserName={otherUser?.name || 'User'}
+          otherUserPhoto={otherUser?.photos?.[0]}
+          currentUserId={user?.id}
+          isIncoming={!!incomingCall}
+          callStatus={incomingCall ? 'ringing' : callStatus}
+          socket={socketRef.current}   
+        />
+      )}
     </div>
   );
 }

@@ -8,6 +8,9 @@ import StatusModal from '../components/StatusModal';
 import StatusUpload from '../components/StatusUpload';
 import UserProfileModal from '../components/UserProfileModal';
 
+// Add this at the top
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function Dashboard() {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -52,7 +55,7 @@ export default function Dashboard() {
         return;
       }
       
-      const response = await axios.get('http://localhost:5000/api/users/discover', {
+      const response = await axios.get(`${API_URL}/users/discover`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -75,7 +78,7 @@ export default function Dashboard() {
   const fetchStories = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/status/active', {
+      const response = await axios.get(`${API_URL}/status/active`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setStories(response.data.stories);
@@ -92,7 +95,7 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/matches/swipe', {
+      const response = await axios.post(`${API_URL}/matches/swipe`, {
         targetUserId,
         action: 'like'
       }, {
@@ -129,7 +132,7 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/matches/swipe', {
+      await axios.post(`${API_URL}/matches/swipe`, {
         targetUserId,
         action: 'pass'
       }, {
@@ -156,7 +159,7 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/matches/swipe', {
+      const response = await axios.post(`${API_URL}/matches/swipe`, {
         targetUserId,
         action: 'like'
       }, {
@@ -195,7 +198,7 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/matches/swipe', {
+      await axios.post(`${API_URL}/matches/swipe`, {
         targetUserId,
         action: 'pass'
       }, {
@@ -335,28 +338,27 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Add near the online status badge */}
-{profile.online_status && (
-  <div className="absolute bottom-3 left-3 z-10 bg-green-500 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 shadow-lg">
-    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-    <span>Online</span>
-  </div>
-)}
+              {/* Online Status */}
+              {profile.online_status && (
+                <div className="absolute bottom-3 left-3 z-10 bg-green-500 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 shadow-lg">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                  <span>Online</span>
+                </div>
+              )}
 
-{/* ADD CALL QUICK ACTION BUTTON */}
-{profile.online_status && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      navigate(`/messages/${profile.id}`);
-      toast.info('Tap the 📹 button in chat to start a call', { icon: '📞' });
-    }}
-    className="absolute bottom-3 right-3 z-10 bg-blue-500 text-white p-1.5 rounded-full shadow-lg hover:bg-blue-600 transition"
-    title="Call"
-  >
-    📞
-  </button>
-)}
+              {/* Call Button */}
+              {profile.online_status && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/messages/${profile.id}`);
+                  }}
+                  className="absolute bottom-3 right-3 z-10 bg-blue-500 text-white p-1.5 rounded-full shadow-lg hover:bg-blue-600 transition"
+                  title="Call"
+                >
+                  📞
+                </button>
+              )}
 
               {/* Match Badge */}
               {profile.is_matched && (
@@ -509,7 +511,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Status Modal - Updated to use the new structure */}
+      {/* Status Modal */}
       {selectedStoryUser && selectedStoryStatuses && selectedStoryStatuses.length > 0 && (
         <StatusModal
           user={selectedStoryUser}

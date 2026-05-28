@@ -25,7 +25,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
    cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",
+        origin: [FRONTEND_URL, 'http://localhost:5173', 'https://hookup-app-fawn.vercel.app'],
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"]
@@ -40,14 +40,19 @@ const io = new Server(server, {
 
 // CORS middleware - MUST be first
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+    const allowedOrigins = [FRONTEND_URL, 'http://localhost:5173', 'https://hookup-app-fawn.vercel.app'];
+    const origin = req.headers.origin;
+    
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     res.header('Cross-Origin-Resource-Policy', 'cross-origin');
     res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
     
-    if (req.method === 'OPTIONS') {
+     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
     }
     next();
@@ -55,7 +60,7 @@ app.use((req, res, next) => {
 
 // Use cors middleware
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: [FRONTEND_URL, 'http://localhost:5173', 'https://hookup-app-fawn.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']

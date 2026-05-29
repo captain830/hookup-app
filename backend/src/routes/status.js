@@ -30,7 +30,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 15 * 1024 * 1024 },
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB for videos
     fileFilter: (req, file, cb) => {
         if (file.fieldname === 'music') {
             if (file.mimetype.startsWith('audio/')) {
@@ -48,18 +48,26 @@ const upload = multer({
     }
 });
 
+// Get base URL dynamically
+const getBaseUrl = (req) => {
+    const protocol = req.protocol;
+    const host = req.get('host');
+    return `${protocol}://${host}`;
+};
+
 // Create a status
 router.post('/create', auth, upload.fields([
     { name: 'media', maxCount: 1 },
     { name: 'music', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        if (!req.files['media']) {
+        if (!req.files || !req.files['media']) {
             return res.status(400).json({ error: 'No media uploaded' });
         }
 
         const mediaFile = req.files['media'][0];
-        const mediaUrl = `http://localhost:5000/uploads/status/${mediaFile.filename}`;
+        const baseUrl = getBaseUrl(req);
+        const mediaUrl = `${baseUrl}/uploads/status/${mediaFile.filename}`;
         const mediaType = mediaFile.mimetype.startsWith('video') ? 'video' : 'image';
         
         let musicUrl = null;
@@ -68,7 +76,7 @@ router.post('/create', auth, upload.fields([
         
         if (req.files['music'] && req.files['music'][0]) {
             const musicFile = req.files['music'][0];
-            musicUrl = `http://localhost:5000/uploads/music/${musicFile.filename}`;
+            musicUrl = `${baseUrl}/uploads/music/${musicFile.filename}`;
             if (!musicTitle) {
                 musicTitle = path.parse(musicFile.originalname).name;
             }
@@ -133,7 +141,7 @@ router.get('/active', auth, async (req, res) => {
     }
 });
 
-// Get single status with all details
+// Get single status with details (SIMPLIFIED - less likely to error)
 router.get('/:statusId', auth, async (req, res) => {
     try {
         const statusId = parseInt(req.params.statusId);
@@ -146,40 +154,9 @@ router.get('/:statusId', auth, async (req, res) => {
             [statusId, userId]
         );
         
-        // Update view count
-        await db.query(
-            `UPDATE status SET views_count = (
-                SELECT COUNT(*) FROM status_views WHERE status_id = $1
-            ) WHERE id = $1`,
-            [statusId]
-        );
-        
+        // Get status with user info
         const result = await db.query(`
-            SELECT s.*, u.name, u.photos as user_photo,
-                   COALESCE(
-                       (SELECT json_agg(json_build_object('user_id', viewer_id, 'user_name', u2.name))
-                        FROM status_views sv
-                        JOIN users u2 ON sv.viewer_id = u2.id
-                        WHERE sv.status_id = s.id), '[]'
-                   ) as viewers,
-                   COALESCE(
-                       (SELECT json_agg(json_build_object('user_id', user_id, 'reaction_type', reaction_type, 'user_name', u3.name))
-                        FROM status_reactions sr
-                        JOIN users u3 ON sr.user_id = u3.id
-                        WHERE sr.status_id = s.id), '[]'
-                   ) as reactions,
-                   COALESCE(
-                       (SELECT json_agg(json_build_object('id', sc.id, 'user_id', sc.user_id, 'comment', sc.comment, 'user_name', u4.name, 'created_at', sc.created_at, 'replies', COALESCE(
-                           (SELECT json_agg(json_build_object('id', sr.id, 'user_id', sr.user_id, 'reply', sr.reply, 'user_name', u5.name, 'created_at', sr.created_at))
-                            FROM status_replies sr
-                            JOIN users u5 ON sr.user_id = u5.id
-                            WHERE sr.comment_id = sc.id), '[]'
-                       )))
-                        FROM status_comments sc
-                        JOIN users u4 ON sc.user_id = u4.id
-                        WHERE sc.status_id = s.id
-                        ORDER BY sc.created_at DESC), '[]'
-                   ) as comments
+            SELECT s.*, u.name, u.photos as user_photo
             FROM status s
             JOIN users u ON s.user_id = u.id
             WHERE s.id = $1 AND s.expires_at > NOW()
@@ -189,7 +166,57 @@ router.get('/:statusId', auth, async (req, res) => {
             return res.status(404).json({ error: 'Status not found or expired' });
         }
         
-        res.json(result.rows[0]);
+        // Get viewers separately (simpler query)
+        const viewers = await db.query(`
+            SELECT sv.viewer_id as user_id, u2.name as user_name
+            FROM status_views sv
+            JOIN users u2 ON sv.viewer_id = u2.id
+            WHERE sv.status_id = $1
+        `, [statusId]);
+        
+        // Get reactions separately
+        const reactions = await db.query(`
+            SELECT sr.user_id, sr.reaction_type, u3.name as user_name
+            FROM status_reactions sr
+            JOIN users u3 ON sr.user_id = u3.id
+            WHERE sr.status_id = $1
+        `, [statusId]);
+        
+        // Get comments separately
+        const comments = await db.query(`
+            SELECT sc.id, sc.user_id, sc.comment, sc.created_at, u4.name as user_name
+            FROM status_comments sc
+            JOIN users u4 ON sc.user_id = u4.id
+            WHERE sc.status_id = $1
+            ORDER BY sc.created_at DESC
+        `, [statusId]);
+        
+        // Get replies for each comment
+        const commentsWithReplies = [];
+        for (const comment of comments.rows) {
+            const replies = await db.query(`
+                SELECT sr.id, sr.user_id, sr.reply, sr.created_at, u5.name as user_name
+                FROM status_replies sr
+                JOIN users u5 ON sr.user_id = u5.id
+                WHERE sr.comment_id = $1
+                ORDER BY sr.created_at ASC
+            `, [comment.id]);
+            
+            commentsWithReplies.push({
+                ...comment,
+                replies: replies.rows
+            });
+        }
+        
+        const statusData = {
+            ...result.rows[0],
+            viewers: viewers.rows,
+            reactions: reactions.rows,
+            comments: commentsWithReplies,
+            likes_count: reactions.rows.filter(r => r.reaction_type === '❤️').length
+        };
+        
+        res.json(statusData);
     } catch (error) {
         console.error('Error fetching status:', error);
         res.status(500).json({ error: error.message });
@@ -207,7 +234,6 @@ router.post('/:statusId/comment', auth, async (req, res) => {
             return res.status(400).json({ error: 'Comment cannot be empty' });
         }
         
-        // Get user name
         const userResult = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
         const userName = userResult.rows[0]?.name;
         
@@ -246,7 +272,6 @@ router.post('/:statusId/reply', auth, async (req, res) => {
             return res.status(400).json({ error: 'Reply cannot be empty' });
         }
         
-        // Get user name
         const userResult = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
         const userName = userResult.rows[0]?.name;
         
@@ -273,14 +298,13 @@ router.post('/:statusId/reply', auth, async (req, res) => {
     }
 });
 
-// Delete a comment (only creator can delete)
+// Delete a comment
 router.delete('/:statusId/comment/:commentId', auth, async (req, res) => {
     try {
         const statusId = parseInt(req.params.statusId);
         const commentId = parseInt(req.params.commentId);
         const userId = req.userId;
         
-        // Verify user is the status creator
         const statusCheck = await db.query('SELECT user_id FROM status WHERE id = $1', [statusId]);
         if (statusCheck.rows[0]?.user_id !== userId) {
             return res.status(403).json({ error: 'Only status creator can delete comments' });
@@ -295,17 +319,12 @@ router.delete('/:statusId/comment/:commentId', auth, async (req, res) => {
     }
 });
 
-// Add reaction to status
+// Add reaction
 router.post('/:statusId/react', auth, async (req, res) => {
     try {
         const statusId = parseInt(req.params.statusId);
         const { reaction } = req.body;
         const userId = req.userId;
-        
-        const validReactions = ['❤️', '👍', '😊', '😢', '🔥', '💕', '🎉', '😮'];
-        if (!validReactions.includes(reaction)) {
-            return res.status(400).json({ error: 'Invalid reaction' });
-        }
         
         await db.query(
             `INSERT INTO status_reactions (status_id, user_id, reaction_type) 
@@ -313,16 +332,6 @@ router.post('/:statusId/react', auth, async (req, res) => {
              ON CONFLICT (status_id, user_id) 
              DO UPDATE SET reaction_type = $3`,
             [statusId, userId, reaction]
-        );
-        
-        // Update counts
-        await db.query(
-            `UPDATE status SET reactions_count = (
-                SELECT COUNT(*) FROM status_reactions WHERE status_id = $1
-            ), likes_count = (
-                SELECT COUNT(*) FROM status_reactions WHERE status_id = $1 AND reaction_type = '❤️'
-            ) WHERE id = $1`,
-            [statusId]
         );
         
         res.json({ success: true });
@@ -346,15 +355,6 @@ router.post('/:statusId/like', auth, async (req, res) => {
             [statusId, userId]
         );
         
-        await db.query(
-            `UPDATE status SET reactions_count = (
-                SELECT COUNT(*) FROM status_reactions WHERE status_id = $1
-            ), likes_count = (
-                SELECT COUNT(*) FROM status_reactions WHERE status_id = $1 AND reaction_type = '❤️'
-            ) WHERE id = $1`,
-            [statusId]
-        );
-        
         res.json({ success: true });
     } catch (error) {
         console.error('Error liking status:', error);
@@ -362,7 +362,7 @@ router.post('/:statusId/like', auth, async (req, res) => {
     }
 });
 
-// Unlike a status
+// Unlike
 router.delete('/:statusId/like', auth, async (req, res) => {
     try {
         const statusId = parseInt(req.params.statusId);
@@ -373,15 +373,6 @@ router.delete('/:statusId/like', auth, async (req, res) => {
             [statusId, userId]
         );
         
-        await db.query(
-            `UPDATE status SET reactions_count = (
-                SELECT COUNT(*) FROM status_reactions WHERE status_id = $1
-            ), likes_count = (
-                SELECT COUNT(*) FROM status_reactions WHERE status_id = $1 AND reaction_type = '❤️'
-            ) WHERE id = $1`,
-            [statusId]
-        );
-        
         res.json({ success: true });
     } catch (error) {
         console.error('Error unliking status:', error);
@@ -389,7 +380,7 @@ router.delete('/:statusId/like', auth, async (req, res) => {
     }
 });
 
-// Edit status caption
+// Edit caption
 router.put('/:statusId/caption', auth, async (req, res) => {
     try {
         const statusId = parseInt(req.params.statusId);
@@ -426,7 +417,7 @@ router.delete('/:statusId', auth, async (req, res) => {
             return res.status(404).json({ error: 'Status not found' });
         }
         
-        // Delete files from disk
+        // Delete files
         const mediaFile = result.rows[0].media_url.split('/').pop();
         const mediaPath = path.join(statusDir, mediaFile);
         if (fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);

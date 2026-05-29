@@ -1,7 +1,8 @@
 const express = require('express');
-const router = express.Router();
-const db = require('../db'); // Your database connection
 const auth = require('../middleware/auth');
+const db = require('../config/database');
+
+const router = express.Router();
 
 // Send friend request
 router.post('/request/:userId', auth, async (req, res) => {
@@ -29,10 +30,7 @@ router.post('/request/:userId', auth, async (req, res) => {
       [fromUserId, toUserId]
     );
     
-    // Get sender info for notification
-    const sender = await db.query('SELECT id, name, photos FROM users WHERE id = $1', [fromUserId]);
-    
-    res.json({ message: 'Friend request sent', sender: sender.rows[0] });
+    res.json({ message: 'Friend request sent' });
   } catch (error) {
     console.error('Send friend request error:', error);
     res.status(500).json({ error: 'Failed to send friend request' });
@@ -45,11 +43,16 @@ router.put('/accept/:userId', auth, async (req, res) => {
     const currentUserId = req.user.id;
     const friendUserId = parseInt(req.params.userId);
     
-    await db.query(
+    const result = await db.query(
       `UPDATE friendships SET status = 'accepted', updated_at = NOW() 
-       WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'`,
+       WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'
+       RETURNING *`,
       [friendUserId, currentUserId]
     );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
     
     res.json({ message: 'Friend request accepted' });
   } catch (error) {
@@ -102,11 +105,13 @@ router.get('/', auth, async (req, res) => {
     const userId = req.user.id;
     
     const friends = await db.query(
-      `SELECT u.id, u.name, u.photos, u.online_status, u.bio, u.age,
+      `SELECT DISTINCT u.id, u.name, u.photos, u.online_status, u.bio, u.age,
               f.status, f.created_at as friends_since
        FROM friendships f
-       JOIN users u ON (f.user_id = u.id OR f.friend_id = u.id) AND u.id != $1
-       WHERE (f.user_id = $1 OR f.friend_id = $1) AND f.status = 'accepted' AND u.id != $1
+       JOIN users u ON (f.user_id = u.id OR f.friend_id = u.id)
+       WHERE (f.user_id = $1 OR f.friend_id = $1) 
+         AND f.status = 'accepted' 
+         AND u.id != $1
        ORDER BY u.name`,
       [userId]
     );

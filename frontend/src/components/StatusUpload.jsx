@@ -22,23 +22,51 @@ export default function StatusUpload({ onUpload, onClose }) {
     const fileInputRef = useRef(null);
     const musicFileInputRef = useRef(null);
 
+    // Supported formats
+    const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+    const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo', 'video/3gpp'];
+    const SUPPORTED_AUDIO_TYPES = [
+        'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 
+        'audio/flac', 'audio/x-ms-wma', 'audio/mp4', 'audio/x-m4a', 'audio/webm'
+    ];
+
+    // REALISTIC size limits
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024;  // 10MB for images
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos (allows 90s of good quality)
+    const MAX_AUDIO_SIZE = 20 * 1024 * 1024;  // 20MB for audio files
+
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         
-        if (file.size > 15 * 1024 * 1024) {
-            toast.error('File too large. Max 15MB');
+        // Check file type
+        const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
+        const isVideo = SUPPORTED_VIDEO_TYPES.includes(file.type);
+        
+        if (!isImage && !isVideo) {
+            toast.error('Unsupported file format. Please upload JPG, PNG, GIF, MP4, WebM, or MOV');
+            return;
+        }
+        
+        // Check size based on type
+        const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+        if (file.size > maxSize) {
+            const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
+            toast.error(`${isVideo ? 'Video' : 'Image'} too large. Max ${maxSizeMB}MB for ${isVideo ? 'videos' : 'images'}`);
             return;
         }
         
         setSelectedFile(file);
-        setMediaType(file.type.startsWith('video') ? 'video' : 'image');
+        setMediaType(isVideo ? 'video' : 'image');
         
         const reader = new FileReader();
         reader.onloadend = () => {
             setPreview(reader.result);
         };
         reader.readAsDataURL(file);
+        
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        toast.success(`${isVideo ? 'Video' : 'Image'} selected: ${file.name} (${sizeMB}MB)`);
     };
 
     const handleLocalMusicSelect = (e) => {
@@ -46,19 +74,20 @@ export default function StatusUpload({ onUpload, onClose }) {
         if (!file) return;
         
         if (!file.type.startsWith('audio/')) {
-            toast.error('Please select an audio file (MP3, WAV, OGG)');
+            toast.error('Please select an audio file (MP3, WAV, OGG, AAC, FLAC, M4A)');
             return;
         }
         
-        if (file.size > 10 * 1024 * 1024) {
-            toast.error('Music file too large. Max 10MB');
+        if (file.size > MAX_AUDIO_SIZE) {
+            const maxSizeMB = (MAX_AUDIO_SIZE / 1024 / 1024).toFixed(0);
+            toast.error(`Audio file too large. Max ${maxSizeMB}MB`);
             return;
         }
         
         setLocalMusicFile(file);
         setLocalMusicName(file.name.replace(/\.[^/.]+$/, ''));
         setSelectedMusic(null);
-        toast.success(`Music added: ${file.name}`);
+        toast.success(`Music added: ${file.name} (${file.type})`);
     };
 
     const removeLocalMusic = () => {
@@ -110,6 +139,12 @@ export default function StatusUpload({ onUpload, onClose }) {
             return;
         }
         
+        const totalSize = selectedFile.size + (localMusicFile?.size || 0);
+        if (totalSize > 150 * 1024 * 1024) {
+            toast.error('Combined file size too large. Max 150MB total.');
+            return;
+        }
+        
         setUploading(true);
         const formData = new FormData();
         formData.append('media', selectedFile);
@@ -127,19 +162,54 @@ export default function StatusUpload({ onUpload, onClose }) {
         
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`${API_URL}/status/create`, formData, {
+            
+            const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+            console.log('📤 Uploading status:');
+            console.log('- API URL:', API_URL);
+            console.log('- Media type:', selectedFile.type);
+            console.log('- Media size:', (selectedFile.size / 1024 / 1024).toFixed(2) + 'MB');
+            console.log('- Total size:', totalSizeMB + 'MB');
+            console.log('- Has music:', !!localMusicFile || !!selectedMusic);
+            if (localMusicFile) console.log('- Music type:', localMusicFile.type);
+            console.log('- Token exists:', !!token);
+            
+            // Show uploading toast with progress
+            const uploadToast = toast.loading(`Uploading ${totalSizeMB}MB... 0%`);
+            
+            const response = await axios.post(`${API_URL}/status/create`, formData, {
                 headers: { 
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
+                },
+                timeout: 120000, // 2 minutes timeout for large uploads
+                onUploadProgress: (progressEvent) => {
+                    if (progressEvent.total) {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        toast.loading(`Uploading... ${percentCompleted}%`, { id: uploadToast });
+                    }
                 }
             });
             
+            toast.dismiss(uploadToast);
+            console.log('✅ Upload response:', response.data);
             toast.success('Status posted! It will disappear after 24 hours');
             if (onUpload) onUpload();
             if (onClose) onClose();
         } catch (error) {
-            console.error('Upload error:', error);
-            toast.error('Failed to post status');
+            console.error('❌ Upload error:', error);
+            console.error('Error response:', error.response?.data);
+            
+            if (error.code === 'ECONNABORTED') {
+                toast.error('Upload timed out. Try a smaller file or check your connection.');
+            } else if (error.response?.status === 401) {
+                toast.error('Please login again');
+            } else if (error.response?.status === 413) {
+                toast.error('File too large for server. Max 100MB.');
+            } else if (error.response?.status === 415) {
+                toast.error('Unsupported media format');
+            } else {
+                toast.error(error.response?.data?.error || 'Failed to post status');
+            }
         } finally {
             setUploading(false);
         }
@@ -160,15 +230,21 @@ export default function StatusUpload({ onUpload, onClose }) {
                     ) : (
                         <img src={preview} alt="Preview" className="w-full h-64 object-cover rounded-xl" />
                     )}
-                    <button
-                        onClick={() => {
-                            setSelectedFile(null);
-                            setPreview(null);
-                        }}
-                        className="mt-2 text-sm text-red-500 hover:text-red-600"
-                    >
-                        Remove
-                    </button>
+                    <div className="flex justify-between items-center mt-2">
+                        <span className="text-xs text-gray-400">
+                            {selectedFile?.name} ({(selectedFile?.size / 1024 / 1024).toFixed(2)}MB) • 
+                            {mediaType === 'video' ? ' Video' : ' Image'}
+                        </span>
+                        <button
+                            onClick={() => {
+                                setSelectedFile(null);
+                                setPreview(null);
+                            }}
+                            className="text-sm text-red-500 hover:text-red-600"
+                        >
+                            Remove
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <button
@@ -177,6 +253,8 @@ export default function StatusUpload({ onUpload, onClose }) {
                 >
                     <span className="text-4xl">📸</span>
                     <span className="text-gray-500 text-sm">Click to add photo or video</span>
+                    <span className="text-xs text-gray-400">Images: JPG, PNG, GIF, WebP (Max 10MB)</span>
+                    <span className="text-xs text-gray-400">Videos: MP4, WebM, MOV (Max 100MB)</span>
                 </button>
             )}
             
@@ -215,7 +293,7 @@ export default function StatusUpload({ onUpload, onClose }) {
             
             {/* Music Section */}
             <div className="mt-4 pt-3 border-t border-gray-100">
-                <p className="text-gray-600 text-sm font-medium mb-2">🎵 Add Background Music</p>
+                <p className="text-gray-600 text-sm font-medium mb-2">🎵 Add Background Music (Optional)</p>
                 
                 <div className="grid grid-cols-2 gap-3 mb-3">
                     <button
@@ -223,7 +301,8 @@ export default function StatusUpload({ onUpload, onClose }) {
                         className="px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-700 hover:border-pink-500 transition flex flex-col items-center gap-1"
                     >
                         <span className="text-xl">📱</span>
-                        <span className="text-xs">Upload from Device</span>
+                        <span className="text-xs">Upload Music</span>
+                        <span className="text-xs text-gray-400">MP3, WAV, OGG (Max 20MB)</span>
                     </button>
                     
                     <button
@@ -245,7 +324,9 @@ export default function StatusUpload({ onUpload, onClose }) {
                                 <span className="text-xl">🎵</span>
                                 <div>
                                     <p className="text-green-700 text-sm font-medium">{localMusicName}</p>
-                                    <p className="text-green-500 text-xs">Local file • {Math.round(localMusicFile.size / 1024)} KB</p>
+                                    <p className="text-green-500 text-xs">
+                                        {localMusicFile.type} • {Math.round(localMusicFile.size / 1024)} KB
+                                    </p>
                                 </div>
                             </div>
                             <button onClick={removeLocalMusic} className="text-red-500 hover:text-red-600">✕</button>
@@ -329,7 +410,9 @@ export default function StatusUpload({ onUpload, onClose }) {
             >
                 {uploading ? 'Posting...' : 'Post Status'}
             </button>
-            <p className="text-xs text-gray-400 mt-3 text-center">Status disappears after 24 hours | Duration up to 90 seconds | Add music from device or search online</p>
+            <p className="text-xs text-gray-400 mt-3 text-center">
+                Supports: Images (Max 10MB) • Videos up to 90s (Max 100MB) • Audio (Max 20MB) • Combined max 150MB
+            </p>
         </div>
     );
 }

@@ -155,3 +155,11 @@
   0%, 100% { transform: scaleY(1); }
   50% { transform: scaleY(2); }
 }
+/* Safe area for notched phones */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

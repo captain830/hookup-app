@@ -582,81 +582,112 @@ export default function Messages() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#efeae2]">
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-2 border-[#075E54] border-t-transparent"></div>
       </div>
     );
   }
 
   if (!otherUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500 mb-4">User not found</p>
-          <button onClick={() => navigate('/chats')} className="px-4 py-2 bg-teal-500 text-white rounded-full">Go Back</button>
+      <div className="min-h-screen flex items-center justify-center bg-[#efeae2]">
+        <div className="text-center px-4">
+          <p className="text-gray-500 text-sm sm:text-base mb-4">User not found</p>
+          <button onClick={() => navigate('/chats')} className="px-5 py-2.5 bg-[#075E54] text-white rounded-full text-sm sm:text-base font-medium hover:bg-[#054a3a] transition active:scale-95">
+            Go Back
+          </button>
         </div>
       </div>
     );
   }
 
    return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      {/* WhatsApp-like Header */}
-      <div className="bg-[#075E54] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-md">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/chats')} className="text-white text-2xl">←</button>
-          <div className="flex items-center gap-3">
-            {otherUser.photos?.[0] ? (
-              <img 
-                src={otherUser.photos[0]} 
-                alt={otherUser.name} 
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                <span className="text-lg text-white">{otherUser.name?.[0]}</span>
-              </div>
-            )}
-            <div>
-              <h2 className="font-semibold text-lg">{otherUser.name}</h2>
-              <p className="text-xs text-teal-100">
-                {online ? '🟢 Online' : (isTyping ? 'Typing...' : 'Last seen recently')}
+    <div className="h-screen flex flex-col bg-[#efeae2]">
+      {/* ===== WHATSAPP-STYLE HEADER ===== */}
+      <div className="bg-[#075E54] text-white px-2 sm:px-3 md:px-4 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-10 shadow-md safe-top">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button 
+            onClick={() => navigate('/chats')} 
+            className="text-white p-1 -ml-1 hover:bg-[#054a3a] rounded-full transition flex-shrink-0"
+            aria-label="Back"
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              {otherUser.photos?.[0] ? (
+                <img 
+                  src={otherUser.photos[0]} 
+                  alt={otherUser.name} 
+                  className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full object-cover border border-white/20"
+                />
+              ) : (
+                <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-sm sm:text-base md:text-lg font-semibold text-white">{otherUser.name?.[0]}</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Name & Status */}
+            <div className="min-w-0">
+              <h2 className="font-medium sm:font-semibold text-sm sm:text-base md:text-lg truncate max-w-[120px] sm:max-w-[180px] md:max-w-[250px]">
+                {otherUser.name}
+              </h2>
+              <p className="text-[10px] sm:text-xs text-green-200 truncate">
+                {online ? 'online' : (isTyping ? 'typing...' : 'last seen recently')}
               </p>
             </div>
           </div>
         </div>
-        <div className="flex gap-4">
+        
+        {/* Action Icons */}
+        <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 flex-shrink-0">
           <button 
             onClick={startVideoCall} 
-            className="p-2 hover:bg-[#054a3a] rounded-full transition" 
+            className="p-1.5 sm:p-2 hover:bg-[#054a3a] rounded-full transition"
             title="Video Call"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
             </svg>
           </button>
           <button 
             onClick={startVoiceCall} 
-            className="p-2 hover:bg-[#054a3a] rounded-full transition" 
+            className="p-1.5 sm:p-2 hover:bg-[#054a3a] rounded-full transition"
             title="Voice Call"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
             </svg>
           </button>
+          
+          {/* Menu */}
           <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-[#054a3a] rounded-full transition">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <button 
+              onClick={() => setShowMenu(!showMenu)} 
+              className="p-1.5 sm:p-2 hover:bg-[#054a3a] rounded-full transition"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
               </svg>
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)}></div>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-20">
-                  <button onClick={() => { handleDeleteConversation(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 rounded-t-lg">🗑️ Delete Conversation</button>
-                  <button onClick={() => { handleBlockUser(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">🚫 Block {otherUser.name}</button>
-                  <button onClick={() => { handleReportUser(); setShowMenu(false); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 rounded-b-lg">⚠️ Report User</button>
+                <div className="absolute right-0 mt-2 w-44 sm:w-48 bg-white rounded-lg shadow-lg z-20 overflow-hidden">
+                  <button onClick={() => { handleDeleteConversation(); setShowMenu(false); }} className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-600 hover:bg-gray-100 text-xs sm:text-sm transition border-b border-gray-100">
+                    🗑️ Delete Chat
+                  </button>
+                  <button onClick={() => { handleBlockUser(); setShowMenu(false); }} className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-600 hover:bg-gray-100 text-xs sm:text-sm transition border-b border-gray-100">
+                    🚫 Block {otherUser.name}
+                  </button>
+                  <button onClick={() => { handleReportUser(); setShowMenu(false); }} className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-600 hover:bg-gray-100 text-xs sm:text-sm transition">
+                    ⚠️ Report User
+                  </button>
                 </div>
               </>
             )}
@@ -664,12 +695,13 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 bg-[#efeae2]">
-        <div className="flex flex-col space-y-2 max-w-4xl mx-auto">
+      {/* ===== MESSAGES AREA ===== */}
+      <div className="flex-1 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 sm:py-4" style={{ backgroundImage: 'url(/whatsapp-bg.png)', backgroundSize: 'contain' }}>
+        <div className="flex flex-col space-y-1.5 sm:space-y-2 max-w-2xl mx-auto">
           {messages.length === 0 && (
-            <div className="text-center text-gray-500 mt-8">
-              <p>No messages yet. Start the conversation!</p>
+            <div className="text-center text-gray-500 mt-8 sm:mt-12 md:mt-16">
+              <div className="text-4xl sm:text-5xl mb-3">💬</div>
+              <p className="text-sm sm:text-base">No messages yet. Start the conversation!</p>
             </div>
           )}
           {messages.map((msg) => (
@@ -678,27 +710,32 @@ export default function Messages() {
               className={`flex ${msg.from_user === user.id ? 'justify-end' : 'justify-start'} group relative`}
             >
               <div
-                className={`max-w-[70%] px-3 py-2 rounded-lg shadow-sm ${
+                className={`max-w-[80%] sm:max-w-[75%] md:max-w-[70%] px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg shadow-sm relative ${
                   msg.from_user === user.id
-                    ? 'bg-[#DCF8C6] text-gray-800 rounded-tr-sm'
-                    : 'bg-white text-gray-800 rounded-tl-sm'
+                    ? 'bg-[#DCF8C6] rounded-tr-sm'
+                    : 'bg-white rounded-tl-sm'
                 }`}
               >
                 {msg.image && (
                   <img 
                     src={msg.image} 
                     alt="Shared" 
-                    className="rounded-lg max-w-full mb-1 cursor-pointer max-h-40 object-cover"
+                    className="rounded-lg max-w-full mb-1 cursor-pointer max-h-40 sm:max-h-52 md:max-h-64 object-cover"
                     onClick={() => window.open(msg.image, '_blank')}
+                    loading="lazy"
                   />
                 )}
-                {msg.message && <p className="break-words text-sm">{msg.message}</p>}
-                <div className="flex items-center justify-end gap-1 mt-1">
-                  <p className="text-[10px] text-gray-500">
+                {msg.message && (
+                  <p className="break-words text-[13px] sm:text-sm md:text-[15px] leading-relaxed pr-5 sm:pr-6">
+                    {msg.message}
+                  </p>
+                )}
+                <div className="flex items-center justify-end gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
+                  <p className="text-[10px] sm:text-[11px] text-gray-500">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   {msg.from_user === user.id && (
-                    <span className="text-[10px]">
+                    <span className="text-[10px] sm:text-[11px]">
                       {msg.sending && <span className="text-gray-400">⏳</span>}
                       {sendingStatus[msg.tempId] === 'sending' && <span className="text-gray-400">✓</span>}
                       {sendingStatus[msg.tempId] === 'sent' && <span className="text-gray-400">✓</span>}
@@ -708,13 +745,14 @@ export default function Messages() {
                     </span>
                   )}
                 </div>
+                {/* Delete button */}
                 {msg.from_user === user.id && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteMessage(msg.id);
                     }}
-                    className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600 transition shadow-md"
+                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 text-[10px] flex items-center justify-center hover:bg-red-600 transition shadow-md"
                   >
                     ×
                   </button>
@@ -724,11 +762,11 @@ export default function Messages() {
           ))}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-white px-3 py-2 rounded-lg rounded-tl-sm shadow-sm">
+              <div className="bg-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg rounded-tl-sm shadow-sm">
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
                 </div>
               </div>
             </div>
@@ -737,52 +775,86 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-gray-100 p-3 border-t border-gray-200">
-        <div className="flex gap-2 items-center max-w-4xl mx-auto">
-          <div className="relative">
+      {/* ===== WHATSAPP-STYLE INPUT AREA ===== */}
+      <div className="bg-[#f0f2f5] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 border-t border-gray-200/50 safe-bottom">
+        <div className="flex items-center gap-1 sm:gap-2 max-w-2xl mx-auto">
+          {/* Emoji Button */}
+          <div className="relative flex-shrink-0">
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 text-gray-500 hover:text-gray-700 transition rounded-full"
+              className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 transition rounded-full active:bg-gray-200"
+              aria-label="Emoji"
             >
-              😊
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </button>
             {showEmojiPicker && (
               <div className="absolute bottom-12 left-0 z-30">
                 <div className="fixed inset-0 z-20" onClick={() => setShowEmojiPicker(false)}></div>
-                <div className="relative z-30">
-                  <EmojiPicker onEmojiClick={onEmojiClick} />
+                <div className="relative z-30 emoji-picker-mobile">
+                  <EmojiPicker onEmojiClick={onEmojiClick} width={window.innerWidth < 400 ? 280 : 320} height={350} />
                 </div>
               </div>
             )}
           </div>
           
+          {/* Camera/Image Button */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingImage}
-            className="p-2 text-gray-500 hover:text-gray-700 transition rounded-full"
+            className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 transition rounded-full active:bg-gray-200 flex-shrink-0"
+            aria-label="Attach image"
           >
-            {uploadingImage ? '⏳' : '📷'}
+            {uploadingImage ? (
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            )}
           </button>
           <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} className="hidden" />
           
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            onKeyUp={handleTyping}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-teal-500 text-sm"
-          />
+          {/* Text Input */}
+          <div className="flex-1 min-w-0">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyUp={handleTyping}
+              placeholder="Type a message..."
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#075E54] focus:border-transparent text-sm sm:text-base placeholder-gray-400 transition shadow-sm"
+            />
+          </div>
           
-          <button
-            onClick={sendMessage}
-            disabled={!newMessage.trim()}
-            className="bg-teal-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-teal-700 transition disabled:opacity-50"
-          >
-            Send
-          </button>
+          {/* Send Button / Microphone */}
+          {newMessage.trim() ? (
+            <button
+              onClick={sendMessage}
+              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition active:scale-95 shadow-sm"
+              aria-label="Send message"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition opacity-60"
+              aria-label="Record voice"
+              disabled
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

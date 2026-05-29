@@ -718,7 +718,7 @@ export default function Messages() {
       </div>
 
       {/* ===== MESSAGES AREA (scrollable) ===== */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 sm:py-4">
+      <div className="flex-1 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 sm:py-4 pb-20">
         <div className="flex flex-col space-y-1.5 sm:space-y-2 max-w-2xl mx-auto">
           {messages.length === 0 && (
             <div className={`text-center mt-8 sm:mt-12 md:mt-16 ${emptyText}`}>
@@ -798,88 +798,55 @@ export default function Messages() {
       </div>
 
       {/* ===== STICKY INPUT BAR (always visible, never hidden) ===== */}
-      <div className={`${inputBarBg} px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 flex-shrink-0 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.06)] safe-bottom transition-colors duration-300`}>
-        <div className="flex items-center gap-1 sm:gap-2 max-w-2xl mx-auto">
-          {/* Emoji Button */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`p-1.5 sm:p-2 rounded-full transition ${iconBtn}`}
-              aria-label="Emoji"
-            >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-            {showEmojiPicker && (
-              <div className="absolute bottom-12 left-0 z-30">
-                <div className="fixed inset-0 z-20" onClick={() => setShowEmojiPicker(false)}></div>
-                <div className="relative z-30 emoji-picker-mobile">
-                  <EmojiPicker onEmojiClick={onEmojiClick} width={window.innerWidth < 400 ? 280 : 320} height={350} />
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Camera/Image Button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingImage}
-            className={`p-1.5 sm:p-2 rounded-full transition flex-shrink-0 ${iconBtn}`}
-            aria-label="Attach image"
-          >
-            {uploadingImage ? (
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            )}
-          </button>
-          <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} className="hidden" />
-          
-          {/* Text Input */}
-          <div className="flex-1 min-w-0">
-            <input
-              ref={inputRef}
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              onKeyUp={handleTyping}
-              placeholder="Type a message..."
-              className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-[#075E54] focus:border-transparent text-sm sm:text-base transition shadow-sm ${inputField}`}
-            />
-          </div>
-          
-          {/* Send Button / Microphone */}
-          {newMessage.trim() ? (
-            <button
-              onClick={sendMessage}
-              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition active:scale-95 shadow-sm"
-              aria-label="Send message"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition opacity-60"
-              aria-label="Record voice"
-              disabled
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
+{/* ===== STICKY INPUT BAR (always fixed at bottom like WhatsApp) ===== */}
+<div className={`${inputBarBg} fixed bottom-0 left-0 right-0 px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] safe-bottom transition-colors duration-300`}>
+  <div className="flex items-center gap-1 sm:gap-2 max-w-2xl mx-auto">
+    {/* Emoji Button */}
+    <div className="relative flex-shrink-0">
+      <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`p-1.5 sm:p-2 rounded-full transition ${iconBtn}`}>
+        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      </button>
+      {showEmojiPicker && (
+        <div className="absolute bottom-12 left-0 z-30">
+          <div className="fixed inset-0 z-20" onClick={() => setShowEmojiPicker(false)}></div>
+          <div className="relative z-30 emoji-picker-mobile"><EmojiPicker onEmojiClick={onEmojiClick} width={window.innerWidth < 400 ? 280 : 320} height={350} /></div>
         </div>
-      </div>
+      )}
+    </div>
+    
+    {/* Camera Button */}
+    <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} className={`p-1.5 sm:p-2 rounded-full transition flex-shrink-0 ${iconBtn}`}>
+      {uploadingImage ? (
+        <svg className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/></svg>
+      ) : (
+        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      )}
+    </button>
+    <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} className="hidden" />
+    
+    {/* Text Input */}
+    <div className="flex-1 min-w-0">
+      <input ref={inputRef} type="text" value={newMessage}
+        onChange={(e) => setNewMessage(e.target.value)}
+        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+        onKeyUp={handleTyping}
+        placeholder="Type a message..."
+        className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-[#075E54] focus:border-transparent text-sm sm:text-base transition shadow-sm ${inputField}`}
+      />
+    </div>
+    
+    {/* Send/Mic Button */}
+    {newMessage.trim() ? (
+      <button onClick={sendMessage} className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition active:scale-95 shadow-sm">
+        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+      </button>
+    ) : (
+      <button className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition opacity-60" disabled>
+        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" /></svg>
+      </button>
+    )}
+  </div>
+</div>
 
       {/* Call Modal */}
       {(showCallModal || incomingCall) && (

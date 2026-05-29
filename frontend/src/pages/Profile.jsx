@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useTheme } from '../context/ThemeContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -11,6 +12,7 @@ export default function Profile() {
   const [interestedIn, setInterestedIn] = useState('');
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (user) {
@@ -87,8 +89,12 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
+    <div className={`min-h-screen transition-colors duration-300 ${
+  theme === 'dark' 
+    ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
+    : 'bg-gradient-to-br from-gray-50 to-gray-100'
+} py-4 sm:py-6 md:py-8`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">My Profile</h1>
           <p className="text-gray-500">Manage your personal information</p>

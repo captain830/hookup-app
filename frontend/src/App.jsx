@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
@@ -28,7 +29,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected route that checks if profile is completed
 const ProfileRequiredRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
@@ -41,21 +41,17 @@ const ProfileRequiredRoute = ({ children }) => {
   }
   
   if (!user) return <Navigate to="/login" />;
-  
-  // If user hasn't completed profile, redirect to setup page
-  if (!user.profile_completed) {
-    return <Navigate to="/setup-profile" />;
-  }
+  if (!user.profile_completed) return <Navigate to="/setup-profile" />;
   
   return children;
 };
 
 function AppContent() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [globalIncomingCall, setGlobalIncomingCall] = useState(null);
   const [socket, setSocket] = useState(null);
 
-  // Setup socket for global incoming calls
   useEffect(() => {
     if (!user) return;
     
@@ -72,8 +68,13 @@ function AppContent() {
     };
   }, [user]);
 
+  // Apply theme to body background
+  useEffect(() => {
+    document.body.style.backgroundColor = theme === 'dark' ? '#111827' : '#f9fafb';
+  }, [theme]);
+
   return (
-    <>
+    <div className={theme === 'dark' ? 'dark' : ''}>
       {user && user.profile_completed && <Navbar />}
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -87,7 +88,6 @@ function AppContent() {
         <Route path="/admin" element={<PrivateRoute adminOnly><AdminPanel /></PrivateRoute>} />
       </Routes>
       
-      {/* Global Incoming Call Modal */}
       {globalIncomingCall && user && (
         <CallModal
           isVideo={globalIncomingCall.isVideo}
@@ -100,7 +100,7 @@ function AppContent() {
           incomingSignal={globalIncomingCall.signal}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -108,29 +108,19 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <AppContent />
-          <Toaster position="top-right" toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-              borderRadius: '12px',
-            },
-            success: {
-              iconTheme: {
-                primary: '#10B981',
-                secondary: '#fff',
+        <ThemeProvider>
+          <BrowserRouter>
+            <AppContent />
+            <Toaster position="top-right" toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+                borderRadius: '12px',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#EF4444',
-                secondary: '#fff',
-              },
-            },
-          }} />
-        </BrowserRouter>
+            }} />
+          </BrowserRouter>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -4,6 +4,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { useTheme } from '../context/ThemeContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -12,6 +13,8 @@ export default function Chats() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
+
 
   const fetchConversations = async () => {
     try {
@@ -80,7 +83,11 @@ export default function Chats() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-3 sm:py-5 md:py-8">
+    <div className={`min-h-screen transition-colors duration-300 ${
+  theme === 'dark' 
+    ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
+    : 'bg-gradient-to-br from-gray-50 to-gray-100'
+} py-3 sm:py-5 md:py-8`}>
       <div className="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto px-3 sm:px-4 md:px-6">
         {/* Header - Responsive */}
         <div className="text-center mb-4 sm:mb-6 md:mb-8 px-2">

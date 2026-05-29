@@ -8,6 +8,7 @@ import StatusModal from '../components/StatusModal';
 import StatusUpload from '../components/StatusUpload';
 import UserProfileModal from '../components/UserProfileModal';
 import { useTheme } from '../context/ThemeContext';
+import { fixImageUrl } from '../utils/imageUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -348,8 +349,7 @@ export default function Dashboard() {
                 <div className={`relative overflow-hidden bg-gradient-to-br from-pink-400 to-purple-500 ${viewMode === 'grid' ? 'aspect-[3/4] sm:aspect-[2/3]' : 'h-20 sm:h-24 w-20 sm:w-24 flex-shrink-0'}`}>
                   {profile.photos?.[0] ? (
                     <img 
-                      src={profile.photos[0]} 
-                      alt={profile.name}
+                      src={fixImageUrl(profile.photos[0])}                      alt={profile.name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"
                       onError={(e) => {

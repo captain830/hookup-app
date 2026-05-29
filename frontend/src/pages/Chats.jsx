@@ -5,6 +5,7 @@ import io from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
+import { fixImageUrl } from '../utils/imageUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -14,7 +15,7 @@ export default function Chats() {
   const [loading, setLoading] = useState(true);
   const { user, logout } = useAuth();
   const { theme } = useTheme();
-
+  const isDark = theme === 'dark';
 
   const fetchConversations = async () => {
     try {
@@ -74,39 +75,55 @@ export default function Chats() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  // Theme classes
+  const pageBg = isDark ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-50 to-gray-100';
+  const cardBg = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white';
+  const dividerColor = isDark ? 'divide-gray-700' : 'divide-gray-100';
+  const titleColor = isDark ? 'text-white' : 'text-gray-800';
+  const subtitleColor = isDark ? 'text-gray-400' : 'text-gray-500';
+  const nameColor = isDark ? 'text-gray-100' : 'text-gray-800';
+  const ageColor = isDark ? 'text-gray-400' : 'text-gray-400';
+  const messageTextColor = isDark ? 'text-gray-300' : 'text-gray-500';
+  const messageUnreadColor = isDark ? 'text-white font-semibold' : 'text-gray-900 font-semibold';
+  const timeColor = isDark ? 'text-gray-500' : 'text-gray-400';
+  const youPrefixColor = isDark ? 'text-gray-500' : 'text-gray-400';
+  const unreadBg = isDark ? 'bg-pink-50/10 hover:bg-pink-50/20' : 'bg-pink-50 hover:bg-pink-100';
+  const hoverBg = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
+  const activeBg = isDark ? 'active:bg-gray-600' : 'active:bg-gray-100';
+  const onlineDotBorder = isDark ? 'border-gray-800' : 'border-white';
+  const emptyCardBg = isDark ? 'bg-gray-800' : 'bg-white';
+  const emptyTitleColor = isDark ? 'text-white' : 'text-gray-800';
+  const emptyTextColor = isDark ? 'text-gray-400' : 'text-gray-500';
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className={`min-h-screen ${pageBg} flex items-center justify-center`}>
         <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-2 sm:border-b-2 border-pink-500"></div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-  theme === 'dark' 
-    ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
-    : 'bg-gradient-to-br from-gray-50 to-gray-100'
-} py-3 sm:py-5 md:py-8`}>
+    <div className={`min-h-screen transition-colors duration-300 ${pageBg} py-3 sm:py-5 md:py-8`}>
       <div className="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto px-3 sm:px-4 md:px-6">
         {/* Header - Responsive */}
         <div className="text-center mb-4 sm:mb-6 md:mb-8 px-2">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-1 sm:mb-2">
+          <h1 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2 ${titleColor}`}>
             Messages
           </h1>
-          <p className="text-xs sm:text-sm md:text-base text-gray-500">
+          <p className={`text-xs sm:text-sm md:text-base ${subtitleColor}`}>
             {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Empty State */}
         {conversations.length === 0 ? (
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-6 sm:p-8 md:p-12 text-center mx-1 sm:mx-0">
+          <div className={`${emptyCardBg} rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-6 sm:p-8 md:p-12 text-center mx-1 sm:mx-0`}>
             <div className="text-4xl sm:text-5xl md:text-6xl mb-3 sm:mb-4">💬</div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">
+            <h2 className={`text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 ${emptyTitleColor}`}>
               No Messages Yet
             </h2>
-            <p className="text-xs sm:text-sm md:text-base text-gray-500 mb-4 sm:mb-6">
+            <p className={`text-xs sm:text-sm md:text-base mb-4 sm:mb-6 ${emptyTextColor}`}>
               Start a conversation with someone!
             </p>
             <Link
@@ -118,14 +135,14 @@ export default function Chats() {
           </div>
         ) : (
           /* Conversations List */
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl overflow-hidden mx-1 sm:mx-0">
-            <div className="divide-y divide-gray-100">
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl overflow-hidden mx-1 sm:mx-0 border ${isDark ? 'border-gray-700' : 'border-transparent'}`}>
+            <div className={`divide-y ${dividerColor}`}>
               {conversations.map((chat) => (
                 <Link
                   key={chat.id}
                   to={`/messages/${chat.id}`}
-                  className={`block hover:bg-gray-50 active:bg-gray-100 transition-colors ${
-                    chat.unread_count > 0 ? 'bg-pink-50 hover:bg-pink-100' : ''
+                  className={`block ${hoverBg} ${activeBg} transition-colors ${
+                    chat.unread_count > 0 ? unreadBg : ''
                   }`}
                   onClick={() => {
                     if (chat.unread_count > 0) {
@@ -143,7 +160,7 @@ export default function Chats() {
                       <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center overflow-hidden shadow-sm">
                         {chat.photos && chat.photos.length > 0 ? (
                           <img 
-                            src={`/uploads/${chat.photos[0].split('/').pop()}`}
+                            src={fixImageUrl(chat.photos[0])}
                             alt={chat.name} 
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -162,7 +179,7 @@ export default function Chats() {
                       </div>
                       {/* Online indicator */}
                       {chat.online_status && (
-                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
+                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 bg-green-500 border-2 ${onlineDotBorder} rounded-full shadow-sm`}></div>
                       )}
                     </div>
 
@@ -171,17 +188,17 @@ export default function Chats() {
                       {/* Top row: Name + Time */}
                       <div className="flex justify-between items-baseline gap-2">
                         <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap">
-                          <h3 className="font-semibold text-gray-800 text-xs sm:text-sm md:text-base truncate max-w-[120px] sm:max-w-[160px] md:max-w-[200px]">
+                          <h3 className={`font-semibold text-xs sm:text-sm md:text-base truncate max-w-[120px] sm:max-w-[160px] md:max-w-[200px] ${nameColor}`}>
                             {chat.name}
                           </h3>
                           {chat.age && (
-                            <span className="text-[10px] sm:text-xs text-gray-400 flex-shrink-0">, {chat.age}</span>
+                            <span className={`text-[10px] sm:text-xs flex-shrink-0 ${ageColor}`}>, {chat.age}</span>
                           )}
                           {chat.is_premium && (
                             <span className="text-[10px] sm:text-xs flex-shrink-0" title="Premium">⭐</span>
                           )}
                         </div>
-                        <span className="text-[10px] sm:text-xs text-gray-400 flex-shrink-0">
+                        <span className={`text-[10px] sm:text-xs flex-shrink-0 ${timeColor}`}>
                           {formatTime(chat.last_message?.time)}
                         </span>
                       </div>
@@ -190,10 +207,10 @@ export default function Chats() {
                       <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-0.5">
                         <div className="flex items-center gap-1 min-w-0">
                           {chat.last_message?.from_me && (
-                            <span className="text-[10px] sm:text-xs text-gray-400 flex-shrink-0">You:</span>
+                            <span className={`text-[10px] sm:text-xs flex-shrink-0 ${youPrefixColor}`}>You:</span>
                           )}
                           <p className={`text-[11px] sm:text-xs md:text-sm truncate ${
-                            chat.unread_count > 0 ? 'text-gray-900 font-semibold' : 'text-gray-500'
+                            chat.unread_count > 0 ? messageUnreadColor : messageTextColor
                           }`}>
                             {chat.last_message?.text || 'No messages yet'}
                           </p>

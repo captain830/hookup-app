@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
+import { fixImageUrl } from '../utils/imageUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -13,6 +14,7 @@ export default function Profile() {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     if (user) {
@@ -88,39 +90,56 @@ export default function Profile() {
     }
   };
 
+  // Theme classes
+  const pageBg = isDark ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-50 to-gray-100';
+  const titleColor = isDark ? 'text-white' : 'text-gray-800';
+  const subtitleColor = isDark ? 'text-gray-400' : 'text-gray-500';
+  const cardBg = isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white';
+  const labelColor = isDark ? 'text-gray-200' : 'text-gray-700';
+  const inputBorder = isDark ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' : 'border-gray-200 bg-white text-gray-800';
+  const inputFocus = 'focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent';
+  const charCountColor = isDark ? 'text-gray-500' : 'text-gray-400';
+  const hintColor = isDark ? 'text-gray-500' : 'text-gray-400';
+  const photoBorderColor = isDark ? 'border-gray-700' : 'border-white';
+
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-  theme === 'dark' 
-    ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
-    : 'bg-gradient-to-br from-gray-50 to-gray-100'
-} py-4 sm:py-6 md:py-8`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">My Profile</h1>
-          <p className="text-gray-500">Manage your personal information</p>
+    <div className={`min-h-screen transition-colors duration-300 ${pageBg} py-4 sm:py-6 md:py-8`}>
+      <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 lg:px-6">
+        
+        {/* Header */}
+        <div className="text-center mb-5 sm:mb-8">
+          <h1 className={`text-2xl sm:text-3xl md:text-4xl font-bold mb-2 ${titleColor}`}>
+            My Profile
+          </h1>
+          <p className={`text-sm sm:text-base ${subtitleColor}`}>
+            Manage your personal information
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-6 md:p-8">
+        <div className={`${cardBg} rounded-2xl shadow-xl overflow-hidden transition-colors duration-300`}>
+          <div className="p-5 sm:p-6 md:p-8">
+            
             {/* Profile Photo Section */}
             <div className="mb-8 text-center">
-              <label className="block text-gray-700 mb-3 font-semibold text-lg">Profile Photo</label>
+              <label className={`block mb-3 font-semibold text-base sm:text-lg ${labelColor}`}>
+                Profile Photo
+              </label>
               <div className="flex flex-col items-center gap-4">
                 {/* Current Photo */}
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center overflow-hidden shadow-lg">
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-offset-2 ring-pink-500/30 ring-offset-transparent">
                     {photos && photos.length > 0 ? (
                       <img 
-                        src={photos[0]} 
+                        src={fixImageUrl(photos[0])} 
                         alt="Profile" 
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = `<span class="text-4xl text-white font-bold">${user?.name?.charAt(0)?.toUpperCase()}</span>`;
+                          e.target.parentElement.innerHTML = `<span class="text-3xl sm:text-4xl text-white font-bold">${user?.name?.charAt(0)?.toUpperCase()}</span>`;
                         }}
                       />
                     ) : (
-                      <span className="text-4xl text-white font-bold">
+                      <span className="text-3xl sm:text-4xl text-white font-bold">
                         {user?.name?.charAt(0)?.toUpperCase()}
                       </span>
                     )}
@@ -129,9 +148,9 @@ export default function Profile() {
                   {photos.length > 0 && (
                     <button
                       onClick={handleDeletePhoto}
-                      className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-red-600 transition shadow-md"
+                      className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-red-600 transition shadow-md active:scale-95"
                     >
-                      Remove Photo
+                      Remove
                     </button>
                   )}
                 </div>
@@ -145,39 +164,44 @@ export default function Profile() {
                     className="hidden" 
                     disabled={uploading}
                   />
-                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full text-sm font-semibold hover:shadow-lg transition cursor-pointer">
+                  <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full text-sm font-semibold hover:shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                     {uploading ? 'Uploading...' : (photos.length > 0 ? 'Change Photo' : 'Upload Photo')}
                   </span>
                 </label>
-                <p className="text-xs text-gray-400">JPG, PNG or GIF. Max 5MB.</p>
+                <p className={`text-xs ${hintColor}`}>JPG, PNG or GIF. Max 5MB.</p>
               </div>
             </div>
 
             {/* Bio Section */}
-            <div className="mb-6">
-              <label className="block text-gray-700 mb-2 font-semibold">Bio</label>
+            <div className="mb-5 sm:mb-6">
+              <label className={`block mb-2 font-semibold text-sm sm:text-base ${labelColor}`}>
+                Bio
+              </label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows="4"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition"
+                className={`w-full px-4 py-3 rounded-xl transition resize-none ${inputBorder} ${inputFocus}`}
                 placeholder="Tell others about yourself..."
+                maxLength={500}
               />
-              <p className="text-right text-xs text-gray-400 mt-1">{bio.length}/500</p>
+              <p className={`text-right text-xs mt-1 ${charCountColor}`}>{bio.length}/500</p>
             </div>
 
             {/* Interested In */}
-            <div className="mb-6">
-              <label className="block text-gray-700 mb-2 font-semibold">Interested In</label>
+            <div className="mb-6 sm:mb-8">
+              <label className={`block mb-2 font-semibold text-sm sm:text-base ${labelColor}`}>
+                Interested In
+              </label>
               <select
                 value={interestedIn}
                 onChange={(e) => setInterestedIn(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className={`w-full px-4 py-3 rounded-xl transition appearance-none ${inputBorder} ${inputFocus}`}
               >
-                <option value="">Select</option>
+                <option value="">Select preference</option>
                 <option value="male">Men</option>
                 <option value="female">Women</option>
                 <option value="both">Everyone</option>
@@ -185,12 +209,12 @@ export default function Profile() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 onClick={updateProfile}
-                className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                className="flex-1 py-3 sm:py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold text-sm sm:text-base hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                Save Changes
+                💾 Save Changes
               </button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { fixImageUrl } from '../utils/imageUrl';
 export default function StatusCircle({ user, onView, isOwn = false }) {
     const hasUnviewed = !isOwn && user.statuses?.some(s => !s.viewed_by_me);
     const latestStatus = user.statuses?.[0];
@@ -13,7 +14,7 @@ export default function StatusCircle({ user, onView, isOwn = false }) {
                 <div className="w-full h-full rounded-full bg-gray-800 overflow-hidden">
                     {user.user_photo && user.user_photo[0] ? (
                         <img 
-                            src={`/uploads/${user.user_photo[0].split('/').pop()}`}
+                            src={fixImageUrl(user.user_photo?.[0])}
                             alt={user.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {

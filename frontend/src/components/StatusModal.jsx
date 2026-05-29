@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { fixImageUrl } from '../utils/imageUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -54,7 +55,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
     const setupMusic = () => {
         if (!currentStatus?.music_url) return;
         
-        audioRef.current = new Audio(currentStatus.music_url);
+        audioRef.current = new Audio(fixImageUrl(currentStatus.music_url));
         
         const musicStartDelay = ((currentStatus.music_start_time || 0) / 100) * (currentStatus.duration || 10) * 1000;
         
@@ -408,7 +409,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
                 <div className="max-w-md max-h-[70vh] w-full rounded-2xl overflow-hidden">
                     {currentStatus.media_type === 'video' ? (
                         <video 
-                            src={currentStatus.media_url} 
+                            src={fixImageUrl(currentStatus.media_url)} 
                             autoPlay 
                             muted
                             className="w-full h-full object-contain"
@@ -416,7 +417,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
                         />
                     ) : (
                         <img 
-                            src={currentStatus.media_url} 
+                            src={fixImageUrl(currentStatus.media_url)} 
                             alt="Status"
                             className="w-full h-full object-contain rounded-2xl"
                         />
@@ -438,7 +439,8 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 p-0.5">
                     <div className="w-full h-full rounded-full bg-gray-800 overflow-hidden">
                         {user.user_photo && user.user_photo[0] ? (
-                            <img src={`/uploads/${user.user_photo[0].split('/').pop()}`} alt={user.name} className="w-full h-full object-cover" />
+                            <img src={fixImageUrl(user.user_photo?.[0])}
+ alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-pink-500 to-purple-600">
                                 <span className="text-white text-lg font-bold">{user.name?.charAt(0)?.toUpperCase()}</span>

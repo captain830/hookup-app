@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { fixImageUrl } from '../utils/imageUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -68,7 +69,7 @@ export default function UserProfileModal({ userId, onClose, onLike, onPass, curr
                     {user.photos && user.photos.length > 0 ? (
                         <>
                             <img 
-                                src={user.photos[activeImageIndex]} 
+                                src={fixImageUrl(user.photos[activeImageIndex])} 
                                 alt={user.name}
                                 className="w-full h-full object-cover"
                             />

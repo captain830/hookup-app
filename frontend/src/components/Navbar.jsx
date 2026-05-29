@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import { useTheme } from '../context/ThemeContext';
+import { fixImageUrl } from '../utils/imageUrl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -197,7 +198,7 @@ export default function Navbar() {
                 <button className="flex items-center space-x-1 lg:space-x-2 focus:outline-none">
                   {profilePhoto ? (
                     <img 
-                      src={`/uploads/${profilePhoto.split('/').pop()}`}
+                      src={fixImageUrl(profilePhoto)}
                       alt={user?.name}
                       className="w-7 h-7 lg:w-8 lg:h-8 rounded-full object-cover border-2 border-pink-500"
                       onError={(e) => {

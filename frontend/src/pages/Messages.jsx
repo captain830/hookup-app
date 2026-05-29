@@ -623,8 +623,8 @@ export default function Messages() {
     );
   }
 
-   return (
-    <div className={`h-screen flex flex-col ${pageBg} transition-colors duration-300`}>
+     return (
+    <div className={`absolute inset-0 flex flex-col ${pageBg} transition-colors duration-300`}>
       {/* ===== WHATSAPP-STYLE HEADER ===== */}
       <div className={`${headerBg} text-white px-2 sm:px-3 md:px-4 py-2 sm:py-3 flex items-center justify-between flex-shrink-0 z-20 shadow-md safe-top transition-colors duration-300`}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -639,7 +639,6 @@ export default function Messages() {
           </button>
           
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            {/* Avatar */}
             <div className="flex-shrink-0">
               {otherUser.photos?.[0] ? (
                 <img 
@@ -654,7 +653,6 @@ export default function Messages() {
               )}
             </div>
             
-            {/* Name & Status */}
             <div className="min-w-0">
               <h2 className="font-medium sm:font-semibold text-sm sm:text-base md:text-lg truncate max-w-[120px] sm:max-w-[180px] md:max-w-[250px]">
                 {otherUser.name}
@@ -666,33 +664,20 @@ export default function Messages() {
           </div>
         </div>
         
-        {/* Action Icons */}
         <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 flex-shrink-0">
-          <button 
-            onClick={startVideoCall} 
-            className={`p-1.5 sm:p-2 ${headerHover} rounded-full transition`}
-            title="Video Call"
-          >
+          <button onClick={startVideoCall} className={`p-1.5 sm:p-2 ${headerHover} rounded-full transition`} title="Video Call">
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
             </svg>
           </button>
-          <button 
-            onClick={startVoiceCall} 
-            className={`p-1.5 sm:p-2 ${headerHover} rounded-full transition`}
-            title="Voice Call"
-          >
+          <button onClick={startVoiceCall} className={`p-1.5 sm:p-2 ${headerHover} rounded-full transition`} title="Voice Call">
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
             </svg>
           </button>
           
-          {/* Menu */}
           <div className="relative">
-            <button 
-              onClick={() => setShowMenu(!showMenu)} 
-              className={`p-1.5 sm:p-2 ${headerHover} rounded-full transition`}
-            >
+            <button onClick={() => setShowMenu(!showMenu)} className={`p-1.5 sm:p-2 ${headerHover} rounded-full transition`}>
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
               </svg>
@@ -701,15 +686,9 @@ export default function Messages() {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)}></div>
                 <div className={`absolute right-0 mt-2 w-44 sm:w-48 rounded-lg shadow-lg z-20 overflow-hidden border ${menuBg}`}>
-                  <button onClick={() => { handleDeleteConversation(); setShowMenu(false); }} className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-500 text-xs sm:text-sm transition border-b ${menuHover}`}>
-                    🗑️ Delete Chat
-                  </button>
-                  <button onClick={() => { handleBlockUser(); setShowMenu(false); }} className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-500 text-xs sm:text-sm transition border-b ${menuHover}`}>
-                    🚫 Block {otherUser.name}
-                  </button>
-                  <button onClick={() => { handleReportUser(); setShowMenu(false); }} className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-500 text-xs sm:text-sm transition ${menuHover}`}>
-                    ⚠️ Report User
-                  </button>
+                  <button onClick={() => { handleDeleteConversation(); setShowMenu(false); }} className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-500 text-xs sm:text-sm transition border-b ${menuHover}`}>🗑️ Delete Chat</button>
+                  <button onClick={() => { handleBlockUser(); setShowMenu(false); }} className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-500 text-xs sm:text-sm transition border-b ${menuHover}`}>🚫 Block {otherUser.name}</button>
+                  <button onClick={() => { handleReportUser(); setShowMenu(false); }} className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-red-500 text-xs sm:text-sm transition ${menuHover}`}>⚠️ Report User</button>
                 </div>
               </>
             )}
@@ -717,8 +696,8 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* ===== MESSAGES AREA (scrollable) ===== */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 sm:py-4 pb-20">
+      {/* ===== MESSAGES AREA - flex-1 with overflow ===== */}
+      <div className="flex-1 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 sm:py-4">
         <div className="flex flex-col space-y-1.5 sm:space-y-2 max-w-2xl mx-auto">
           {messages.length === 0 && (
             <div className={`text-center mt-8 sm:mt-12 md:mt-16 ${emptyText}`}>
@@ -727,35 +706,16 @@ export default function Messages() {
             </div>
           )}
           {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.from_user === user.id ? 'justify-end' : 'justify-start'} group relative`}
-            >
-              <div
-                className={`max-w-[80%] sm:max-w-[75%] md:max-w-[70%] px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg shadow-sm relative ${
-                  msg.from_user === user.id
-                    ? `${myBubble} rounded-tr-sm`
-                    : `${theirBubble} rounded-tl-sm`
-                }`}
-              >
+            <div key={msg.id} className={`flex ${msg.from_user === user.id ? 'justify-end' : 'justify-start'} group relative`}>
+              <div className={`max-w-[80%] sm:max-w-[75%] md:max-w-[70%] px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg shadow-sm relative ${
+                msg.from_user === user.id ? `${myBubble} rounded-tr-sm` : `${theirBubble} rounded-tl-sm`
+              }`}>
                 {msg.image && (
-                  <img 
-                    src={fixImageUrl(msg.image)}
-                    alt="Shared" 
-                    className="rounded-lg max-w-full mb-1 cursor-pointer max-h-40 sm:max-h-52 md:max-h-64 object-cover"
-                    onClick={() => window.open(fixImageUrl(msg.image), '_blank')}
-                    loading="lazy"
-                  />
+                  <img src={fixImageUrl(msg.image)} alt="Shared" className="rounded-lg max-w-full mb-1 cursor-pointer max-h-40 sm:max-h-52 md:max-h-64 object-cover" onClick={() => window.open(fixImageUrl(msg.image), '_blank')} loading="lazy" />
                 )}
-                {msg.message && (
-                  <p className="break-words text-[13px] sm:text-sm md:text-[15px] leading-relaxed pr-5 sm:pr-6">
-                    {msg.message}
-                  </p>
-                )}
+                {msg.message && <p className="break-words text-[13px] sm:text-sm md:text-[15px] leading-relaxed pr-5 sm:pr-6">{msg.message}</p>}
                 <div className="flex items-center justify-end gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
-                  <p className={`text-[10px] sm:text-[11px] ${timeText}`}>
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  <p className={`text-[10px] sm:text-[11px] ${timeText}`}>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   {msg.from_user === user.id && (
                     <span className="text-[10px] sm:text-[11px]">
                       {msg.sending && <span className="text-gray-400">⏳</span>}
@@ -763,21 +723,11 @@ export default function Messages() {
                       {sendingStatus[msg.tempId] === 'sent' && <span className="text-gray-400">✓</span>}
                       {sendingStatus[msg.tempId] === 'delivered' && <span className="text-gray-400">✓✓</span>}
                       {msg.is_read && !msg.sending && <span className="text-blue-400">✓✓</span>}
-                      {!sendingStatus[msg.tempId] && !msg.is_read && !msg.sending && <span className="text-gray-400">✓</span>}
                     </span>
                   )}
                 </div>
-                {/* Delete button */}
                 {msg.from_user === user.id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteMessage(msg.id);
-                    }}
-                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 text-[10px] flex items-center justify-center hover:bg-red-600 transition shadow-md"
-                  >
-                    ×
-                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }} className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 text-[10px] flex items-center justify-center hover:bg-red-600 transition shadow-md">×</button>
                 )}
               </div>
             </div>
@@ -797,73 +747,57 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* ===== STICKY INPUT BAR (always visible, never hidden) ===== */}
-{/* ===== STICKY INPUT BAR (always fixed at bottom like WhatsApp) ===== */}
-<div className={`${inputBarBg} fixed bottom-0 left-0 right-0 px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] safe-bottom transition-colors duration-300`}>
-  <div className="flex items-center gap-1 sm:gap-2 max-w-2xl mx-auto">
-    {/* Emoji Button */}
-    <div className="relative flex-shrink-0">
-      <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`p-1.5 sm:p-2 rounded-full transition ${iconBtn}`}>
-        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-      </button>
-      {showEmojiPicker && (
-        <div className="absolute bottom-12 left-0 z-30">
-          <div className="fixed inset-0 z-20" onClick={() => setShowEmojiPicker(false)}></div>
-          <div className="relative z-30 emoji-picker-mobile"><EmojiPicker onEmojiClick={onEmojiClick} width={window.innerWidth < 400 ? 280 : 320} height={350} /></div>
+      {/* ===== INPUT BAR - NOT fixed, part of flex flow ===== */}
+      <div className={`${inputBarBg} flex-shrink-0 px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.06)] safe-bottom transition-colors duration-300`}>
+        <div className="flex items-center gap-1 sm:gap-2 max-w-2xl mx-auto">
+          <div className="relative flex-shrink-0">
+            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`p-1.5 sm:p-2 rounded-full transition ${iconBtn}`}>
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 left-0 z-30">
+                <div className="fixed inset-0 z-20" onClick={() => setShowEmojiPicker(false)}></div>
+                <div className="relative z-30 emoji-picker-mobile"><EmojiPicker onEmojiClick={onEmojiClick} width={window.innerWidth < 400 ? 280 : 320} height={350} /></div>
+              </div>
+            )}
+          </div>
+          
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} className={`p-1.5 sm:p-2 rounded-full transition flex-shrink-0 ${iconBtn}`}>
+            {uploadingImage ? (
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/></svg>
+            ) : (
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            )}
+          </button>
+          <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} className="hidden" />
+          
+          <div className="flex-1 min-w-0">
+            <input ref={inputRef} type="text" value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyUp={handleTyping}
+              placeholder="Type a message..."
+              className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-[#075E54] focus:border-transparent text-sm sm:text-base transition shadow-sm ${inputField}`}
+            />
+          </div>
+          
+          {newMessage.trim() ? (
+            <button onClick={sendMessage} className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition active:scale-95 shadow-sm">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+            </button>
+          ) : (
+            <button className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition opacity-60" disabled>
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" /></svg>
+            </button>
+          )}
         </div>
-      )}
-    </div>
-    
-    {/* Camera Button */}
-    <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} className={`p-1.5 sm:p-2 rounded-full transition flex-shrink-0 ${iconBtn}`}>
-      {uploadingImage ? (
-        <svg className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/></svg>
-      ) : (
-        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-      )}
-    </button>
-    <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} className="hidden" />
-    
-    {/* Text Input */}
-    <div className="flex-1 min-w-0">
-      <input ref={inputRef} type="text" value={newMessage}
-        onChange={(e) => setNewMessage(e.target.value)}
-        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-        onKeyUp={handleTyping}
-        placeholder="Type a message..."
-        className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-[#075E54] focus:border-transparent text-sm sm:text-base transition shadow-sm ${inputField}`}
-      />
-    </div>
-    
-    {/* Send/Mic Button */}
-    {newMessage.trim() ? (
-      <button onClick={sendMessage} className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition active:scale-95 shadow-sm">
-        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
-      </button>
-    ) : (
-      <button className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#075E54] text-white rounded-full flex items-center justify-center hover:bg-[#054a3a] transition opacity-60" disabled>
-        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" /></svg>
-      </button>
-    )}
-  </div>
-</div>
+      </div>
 
       {/* Call Modal */}
       {(showCallModal || incomingCall) && (
         <CallModal
           isVideo={incomingCall ? incomingCall.isVideo : isVideoCall}
-          onClose={() => {
-            stopRingtone();
-            if (socketRef.current) {
-              socketRef.current.emit('end-call', {
-                to: incomingCall ? incomingCall.from : parseInt(userId),
-                from: user.id
-              });
-            }
-            setShowCallModal(false);
-            setIncomingCall(null);
-            setCallStatus(null);
-          }}
+          onClose={() => { stopRingtone(); if (socketRef.current) { socketRef.current.emit('end-call', { to: incomingCall ? incomingCall.from : parseInt(userId), from: user.id }); } setShowCallModal(false); setIncomingCall(null); setCallStatus(null); }}
           onAccept={incomingCall ? acceptCall : undefined}
           otherUserId={incomingCall ? incomingCall.from : parseInt(userId)}
           otherUserName={otherUser?.name || 'User'}
@@ -871,7 +805,7 @@ export default function Messages() {
           currentUserId={user?.id}
           isIncoming={!!incomingCall}
           callStatus={incomingCall ? 'ringing' : callStatus}
-          socket={socketRef.current}   
+          socket={socketRef.current}
         />
       )}
     </div>

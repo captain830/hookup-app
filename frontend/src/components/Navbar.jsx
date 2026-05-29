@@ -30,12 +30,12 @@ export default function Navbar() {
   const iconColor = theme === 'dark' ? 'text-gray-400' : 'text-gray-600';
 
   const navItems = [
-    { path: '/', icon: '🏠', label: 'Discover' },
-    { path: '/chats', icon: '💬', label: 'Chats' },
-    { path: '/matches', icon: '💕', label: 'Matches' },
-    { path: '/profile', icon: '👤', label: 'Profile' },
-  ];
-
+  { path: '/', icon: '🏠', label: 'Discover' },
+  { path: '/chats', icon: '💬', label: 'Chats' },
+  { path: '/friends', icon: '👥', label: 'Friends' },  // ADD THIS
+  { path: '/matches', icon: '💕', label: 'Matches' },
+  { path: '/profile', icon: '👤', label: 'Profile' },
+];
   const fetchUnreadCount = async () => {
     if (!user) return;
     try {

@@ -24,7 +24,8 @@ export default function Dashboard() {
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [showStatusUpload, setShowStatusUpload] = useState(false);
   const [selectedUserForModal, setSelectedUserForModal] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid');
+  const [friendRequests, setFriendRequests] = useState({});
   const { user, logout } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -178,6 +179,23 @@ export default function Dashboard() {
     }
   };
 
+  // Add Friend handler
+  const handleAddFriend = async (targetUserId, userName) => {
+    if (friendRequests[targetUserId]) return;
+    setFriendRequests(prev => ({ ...prev, [targetUserId]: true }));
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/friends/request/${targetUserId}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      toast.success(`Friend request sent to ${userName}! 👥`);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to send friend request');
+    } finally {
+      setFriendRequests(prev => ({ ...prev, [targetUserId]: false }));
+    }
+  };
+
   // Theme classes
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f2f5]';
@@ -186,9 +204,7 @@ export default function Dashboard() {
   const cardBg = isDark ? 'bg-[#1a1a2e]' : 'bg-white';
   const cardBorder = isDark ? 'border-gray-700/50' : 'border-gray-100';
   const inputBg = isDark ? 'bg-[#1a1a2e] border-gray-700 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-800';
-  const badgeBg = isDark ? 'bg-pink-500/20 text-pink-300' : 'bg-pink-100 text-pink-600';
   const storyBg = isDark ? 'bg-[#1a1a2e] border-gray-700' : 'bg-white';
-  const shimmerBg = isDark ? 'bg-gradient-to-r from-transparent via-white/5 to-transparent' : 'bg-gradient-to-r from-transparent via-white/80 to-transparent';
 
   if (loading) {
     return (
@@ -258,7 +274,6 @@ export default function Dashboard() {
         {/* ===== STORIES SECTION ===== */}
         <div className="mb-5 sm:mb-6">
           <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {/* Your Story */}
             <button
               onClick={() => setShowStatusUpload(!showStatusUpload)}
               className="flex flex-col items-center flex-shrink-0 group"
@@ -280,7 +295,6 @@ export default function Dashboard() {
               </span>
             </button>
             
-            {/* Other Stories */}
             {stories.map((userStory) => (
               <StatusCircle 
                 key={userStory.user_id} 
@@ -330,7 +344,7 @@ export default function Dashboard() {
                 className={`group relative ${cardBg} ${cardBorder} border rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] animate-fade-in`}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                {/* Image Section - Compact */}
+                {/* Image Section */}
                 <div className={`relative overflow-hidden bg-gradient-to-br from-pink-400 to-purple-500 ${viewMode === 'grid' ? 'aspect-[3/4] sm:aspect-[2/3]' : 'h-20 sm:h-24 w-20 sm:w-24 flex-shrink-0'}`}>
                   {profile.photos?.[0] ? (
                     <img 
@@ -352,31 +366,26 @@ export default function Dashboard() {
                     </div>
                   )}
                   
-                  {/* Image overlay gradient */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  {/* Premium Badge */}
                   {profile.is_premium && (
                     <div className="absolute top-2 right-2 z-10 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold flex items-center gap-0.5 shadow-md animate-pulse-slow">
                       <span>⭐</span>
                     </div>
                   )}
                   
-                  {/* Match Badge */}
                   {profile.is_matched && (
                     <div className="absolute top-2 left-2 z-10 bg-green-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold shadow-md animate-bounce-slow">
                       💕 MATCH
                     </div>
                   )}
                   
-                  {/* Liked Badge */}
                   {profile.my_swipe_action === 'like' && !profile.is_matched && (
                     <div className="absolute top-2 left-2 z-10 bg-pink-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold shadow-md">
                       ❤️
                     </div>
                   )}
                   
-                  {/* Online Dot */}
                   {profile.online_status && (
                     <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
                       <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
@@ -398,8 +407,9 @@ export default function Dashboard() {
                     )}
                   </div>
                   
-                  {/* Action Icons */}
-                  <div className={`flex items-center gap-1 sm:gap-1.5 ${viewMode === 'grid' ? 'mt-2 sm:mt-2.5' : 'flex-shrink-0 ml-2'}`}>
+                  {/* ===== ACTION ICONS ===== */}
+                  <div className={`flex items-center gap-1 sm:gap-1.5 flex-wrap ${viewMode === 'grid' ? 'mt-2 sm:mt-2.5' : 'flex-shrink-0 ml-2'}`}>
+                    {/* Pass */}
                     <button
                       onClick={(e) => { e.stopPropagation(); handlePass(profile.id); }}
                       disabled={swiping[profile.id]}
@@ -413,6 +423,7 @@ export default function Dashboard() {
                       </svg>
                     </button>
                     
+                    {/* Like */}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleLike(profile.id); }}
                       disabled={swiping[profile.id] || profile.my_swipe_action === 'like'}
@@ -428,6 +439,24 @@ export default function Dashboard() {
                       </svg>
                     </button>
                     
+                    {/* ===== ADD FRIEND BUTTON ===== */}
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        handleAddFriend(profile.id, profile.name); 
+                      }}
+                      disabled={friendRequests[profile.id]}
+                      className={`p-1.5 sm:p-2 rounded-full transition-all duration-200 hover:scale-110 active:scale-90 ${
+                        isDark ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white' : 'bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white'
+                      } disabled:opacity-50`}
+                      title="Add Friend"
+                    >
+                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                      </svg>
+                    </button>
+                    
+                    {/* Message (for matches) */}
                     {profile.is_matched && (
                       <Link
                         to={`/messages/${profile.id}`}
@@ -443,6 +472,7 @@ export default function Dashboard() {
                       </Link>
                     )}
                     
+                    {/* Call (for online users) */}
                     {profile.online_status && !profile.is_matched && (
                       <Link
                         to={`/messages/${profile.id}`}

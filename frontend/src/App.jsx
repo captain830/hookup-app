@@ -17,6 +17,8 @@ import Chats from './pages/Chats';
 import CallModal from './components/CallModal';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
+import Friends from './pages/Friends';
+
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
@@ -86,6 +88,7 @@ function AppContent() {
         <Route path="/matches" element={<ProfileRequiredRoute><Matches /></ProfileRequiredRoute>} />
         <Route path="/messages/:userId" element={<ProfileRequiredRoute><Messages /></ProfileRequiredRoute>} />
         <Route path="/admin" element={<PrivateRoute adminOnly><AdminPanel /></PrivateRoute>} />
+        <Route path="/friends" element={<ProfileRequiredRoute><Friends /></ProfileRequiredRoute>} />
       </Routes>
       
       {globalIncomingCall && user && (

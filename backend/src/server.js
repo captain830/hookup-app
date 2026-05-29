@@ -6,6 +6,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const friendsRouter = require('./routes/friends');
+
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const statusRoutes = require('./routes/status');
@@ -93,6 +95,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/status', statusRoutes);
+app.use('/api/friends', friendsRouter);
 
 // Test route
 app.get('/api/test', (req, res) => {

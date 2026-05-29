@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function SetupProfile() {
   const [formData, setFormData] = useState({
     name: '',
@@ -43,7 +45,7 @@ export default function SetupProfile() {
     formData.append('photo', photo);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/upload/photo', formData, {
+      const response = await axios.post(`${API_URL}/upload/photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data.photoUrl;
@@ -79,7 +81,7 @@ export default function SetupProfile() {
       }
       
       // Complete the profile
-      const profileResponse = await axios.post('http://localhost:5000/api/auth/complete-profile', {
+      const profileResponse = await axios.post(`${API_URL}/auth/complete-profile`, {
         name: formData.name,
         age: formData.age,
         gender: formData.gender,

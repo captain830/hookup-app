@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function UserProfileModal({ userId, onClose, onLike, onPass, currentUser }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function UserProfileModal({ userId, onClose, onLike, onPass, curr
     const fetchUserDetails = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:5000/api/users/${userId}`, {
+            const response = await axios.get(`${API_URL}/users/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setUser(response.data);

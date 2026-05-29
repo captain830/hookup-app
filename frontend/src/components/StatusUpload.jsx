@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function StatusUpload({ onUpload, onClose }) {
     const [uploading, setUploading] = useState(false);
     const [caption, setCaption] = useState('');
@@ -13,10 +15,10 @@ export default function StatusUpload({ onUpload, onClose }) {
     const [selectedMusic, setSelectedMusic] = useState(null);
     const [localMusicFile, setLocalMusicFile] = useState(null);
     const [localMusicName, setLocalMusicName] = useState('');
-    const [duration, setDuration] = useState(30); // Changed default to 30s
+    const [duration, setDuration] = useState(30);
     const [showMusicSearch, setShowMusicSearch] = useState(false);
     const [searchingMusic, setSearchingMusic] = useState(false);
-    const [musicStartTime, setMusicStartTime] = useState(0); // Music start position
+    const [musicStartTime, setMusicStartTime] = useState(0);
     const fileInputRef = useRef(null);
     const musicFileInputRef = useRef(null);
 
@@ -125,7 +127,7 @@ export default function StatusUpload({ onUpload, onClose }) {
         
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/status/create', formData, {
+            await axios.post(`${API_URL}/status/create`, formData, {
                 headers: { 
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
@@ -190,7 +192,7 @@ export default function StatusUpload({ onUpload, onClose }) {
                 maxLength="150"
             />
             
-            {/* Duration Selector - Extended to 90 seconds */}
+            {/* Duration Selector */}
             <div className="mt-4">
                 <label className="text-gray-600 text-sm font-medium">Status Duration</label>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -215,7 +217,6 @@ export default function StatusUpload({ onUpload, onClose }) {
             <div className="mt-4 pt-3 border-t border-gray-100">
                 <p className="text-gray-600 text-sm font-medium mb-2">🎵 Add Background Music</p>
                 
-                {/* Two Options for Music */}
                 <div className="grid grid-cols-2 gap-3 mb-3">
                     <button
                         onClick={() => musicFileInputRef.current?.click()}
@@ -250,7 +251,6 @@ export default function StatusUpload({ onUpload, onClose }) {
                             <button onClick={removeLocalMusic} className="text-red-500 hover:text-red-600">✕</button>
                         </div>
                         
-                        {/* Music Start Time Selector */}
                         <div className="mt-3">
                             <label className="text-xs text-gray-500">Music start position:</label>
                             <div className="flex items-center gap-2 mt-1">

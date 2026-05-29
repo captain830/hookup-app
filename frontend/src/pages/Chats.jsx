@@ -5,6 +5,9 @@ import io from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+
 export default function Chats() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +21,7 @@ export default function Chats() {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/messages/conversations', {
+      const response = await axios.get(`${API_URL}/messages/conversations`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -38,7 +41,7 @@ export default function Chats() {
     const interval = setInterval(fetchConversations, 10000);
     
     // Socket for real-time updates
-    const socket = io('http://localhost:5000');
+    const socket = io(SOCKET_URL);
     
     // When a message is read, refresh the conversations list
     socket.on('messages-read', () => {

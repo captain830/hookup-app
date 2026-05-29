@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -24,7 +27,7 @@ export default function Navbar() {
     if (!user) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/messages/unread-count', {
+      const response = await axios.get(`${API_URL}/messages/unread-count`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setUnreadCount(response.data.count);
@@ -38,7 +41,7 @@ export default function Navbar() {
     if (!user) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/matches/my-matches', {
+      const response = await axios.get(`${API_URL}/matches/my-matches`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setMatchesCount(response.data.length);
@@ -52,7 +55,7 @@ export default function Navbar() {
     if (!user) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/users/me', {
+      const response = await axios.get(`${API_URL}/users/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.data.photos && response.data.photos.length > 0) {
@@ -73,7 +76,7 @@ export default function Navbar() {
     fetchProfilePhoto();
     
     // Connect to socket
-    const socket = io('http://localhost:5000');
+    const socket = io(SOCKET_URL);
     
     // Listen for new messages - UPDATE INSTANTLY
     socket.on('new-message', (data) => {

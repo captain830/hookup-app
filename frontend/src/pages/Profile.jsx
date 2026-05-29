@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function Profile() {
   const { user, updateUser } = useAuth();
   const [bio, setBio] = useState('');
@@ -40,7 +42,7 @@ export default function Profile() {
     setUploading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/users/upload-photo', formData, {
+      const response = await axios.post(`${API_URL}/users/upload-photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -61,7 +63,7 @@ export default function Profile() {
     if (confirm('Delete your profile photo?')) {
       try {
         const photoUrl = encodeURIComponent(photos[0]);
-        const response = await axios.delete(`http://localhost:5000/api/users/photo/${photoUrl}`);
+        const response = await axios.delete(`${API_URL}/users/photo/${photoUrl}`);
         setPhotos(response.data.photos);
         updateUser({ photos: response.data.photos });
         toast.success('Profile photo deleted');
@@ -73,7 +75,7 @@ export default function Profile() {
 
   const updateProfile = async () => {
     try {
-      const response = await axios.put('http://localhost:5000/api/users/profile', {
+      const response = await axios.put(`${API_URL}/users/profile`, {
         bio,
         interestedIn
       });

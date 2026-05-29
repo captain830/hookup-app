@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function StatusModal({ user, userStatuses, currentIndex, onClose, onNext, onPrev, onStatusDeleted }) {
     const [currentStatusIndex, setCurrentStatusIndex] = useState(currentIndex || 0);
     const [progress, setProgress] = useState(0);
@@ -73,7 +75,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
     const fetchStatusDetails = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:5000/api/status/${currentStatus.id}`, {
+            const response = await axios.get(`${API_URL}/status/${currentStatus.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setViewers(response.data.viewers || []);
@@ -135,7 +137,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
         if (confirm('Delete this status? It will be removed permanently.')) {
             try {
                 const token = localStorage.getItem('token');
-                await axios.delete(`http://localhost:5000/api/status/${currentStatus.id}`, {
+                await axios.delete(`${API_URL}/status/${currentStatus.id}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 toast.success('Status deleted');
@@ -160,7 +162,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
         
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://localhost:5000/api/status/${currentStatus.id}/caption`, 
+            await axios.put(`${API_URL}/status/${currentStatus.id}/caption`, 
                 { caption: editCaptionText },
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
@@ -178,7 +180,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
         
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/status/${currentStatus.id}/comment/${commentId}`, {
+            await axios.delete(`${API_URL}/status/${currentStatus.id}/comment/${commentId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setComments(prev => prev.filter(c => c.id !== commentId));
@@ -194,7 +196,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
         
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.post(`http://localhost:5000/api/status/${currentStatus.id}/reply`, 
+            const response = await axios.post(`${API_URL}/status/${currentStatus.id}/reply`, 
                 { commentId, reply: replyText },
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
@@ -220,7 +222,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
         try {
             const token = localStorage.getItem('token');
             if (liked) {
-                await axios.delete(`http://localhost:5000/api/status/${currentStatus.id}/like`, {
+                await axios.delete(`${API_URL}/status/${currentStatus.id}/like`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setLiked(false);
@@ -228,7 +230,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
                 setReactions(prev => prev.filter(r => !(r.user_id === currentUserId && r.reaction_type === '❤️')));
                 toast.success('Removed like');
             } else {
-                await axios.post(`http://localhost:5000/api/status/${currentStatus.id}/like`, {}, {
+                await axios.post(`${API_URL}/status/${currentStatus.id}/like`, {}, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setLiked(true);
@@ -248,7 +250,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
         try {
             const token = localStorage.getItem('token');
             await axios.post(
-                `http://localhost:5000/api/status/${currentStatus.id}/react`,
+                `${API_URL}/status/${currentStatus.id}/react`,
                 { reaction },
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
@@ -286,7 +288,7 @@ export default function StatusModal({ user, userStatuses, currentIndex, onClose,
     
     try {
         const token = localStorage.getItem('token');
-        const response = await axios.post(`http://localhost:5000/api/status/${currentStatus.id}/comment`, 
+        const response = await axios.post(`${API_URL}/status/${currentStatus.id}/comment`, 
             { comment: newComment },
             { headers: { 'Authorization': `Bearer ${token}` } }
         );

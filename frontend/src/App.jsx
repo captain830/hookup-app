@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SetupProfile from './pages/SetupProfile';
 import Dashboard from './pages/Dashboard';
+import CommunityFeed from './pages/CommunityFeed';
 import Profile from './pages/Profile';
 import Matches from './pages/Matches';
 import Messages from './pages/Messages';
@@ -18,7 +19,6 @@ import CallModal from './components/CallModal';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import Friends from './pages/Friends';
-
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
@@ -70,7 +70,6 @@ function AppContent() {
     };
   }, [user]);
 
-  // Apply theme to body background
   useEffect(() => {
     document.body.style.backgroundColor = theme === 'dark' ? '#111827' : '#f9fafb';
   }, [theme]);
@@ -82,7 +81,9 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/setup-profile" element={<PrivateRoute><SetupProfile /></PrivateRoute>} />
-        <Route path="/" element={<ProfileRequiredRoute><Dashboard /></ProfileRequiredRoute>} />
+        {/* Community Feed is now the first page after login */}
+        <Route path="/" element={<ProfileRequiredRoute><CommunityFeed /></ProfileRequiredRoute>} />
+        <Route path="/dashboard" element={<ProfileRequiredRoute><Dashboard /></ProfileRequiredRoute>} />
         <Route path="/chats" element={<ProfileRequiredRoute><Chats /></ProfileRequiredRoute>} />
         <Route path="/profile" element={<ProfileRequiredRoute><Profile /></ProfileRequiredRoute>} />
         <Route path="/matches" element={<ProfileRequiredRoute><Matches /></ProfileRequiredRoute>} />

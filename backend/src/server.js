@@ -6,6 +6,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 const friendsRouter = require('./routes/friends');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -38,6 +40,46 @@ const io = new Server(server, {
     allowEIO3: true,
     connectTimeout: 45000,
     maxHttpBufferSize: 1e8 // 100 MB for signaling data
+});
+
+// Configure multer for post media uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadPath = 'uploads/posts';
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'post-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|gif|mp4|webm|mov/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only images and videos are allowed'));
+        }
+    }
+});
+
+// Ensure uploads directories exist
+['uploads', 'uploads/posts', 'uploads/profiles', 'uploads/status'].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
 });
 
 // CORS middleware - MUST be first
@@ -96,6 +138,532 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/status', statusRoutes);
 app.use('/api/friends', friendsRouter);
+
+// ========== COMMUNITY POSTS ROUTES ==========
+
+// Middleware to verify token for posts
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ error: 'Access token required' });
+    }
+    
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
+        req.user = user;
+        next();
+    });
+};
+
+// Get posts with filtering
+app.get('/api/posts', authenticateToken, async (req, res) => {
+    try {
+        const { filter = 'all', limit = 20, offset = 0 } = req.query;
+        const userId = req.user.id;
+        
+        let query;
+        let params = [userId];
+        
+        switch(filter) {
+            case 'friends':
+                query = `
+                    SELECT DISTINCT p.*, 
+                        u.name as user_name, 
+                        u.photos[1] as user_photo,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
+                        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                        (SELECT COUNT(*) FROM shares WHERE post_id = p.id) as shares_count,
+                        EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
+                        TRUE as is_friend
+                    FROM posts p
+                    JOIN users u ON p.user_id = u.id
+                    JOIN friends f ON (f.user_id = $1 AND f.friend_id = p.user_id) 
+                                   OR (f.friend_id = $1 AND f.user_id = p.user_id)
+                    WHERE f.status = 'accepted'
+                    ORDER BY p.created_at DESC
+                    LIMIT $2 OFFSET $3
+                `;
+                params.push(limit, offset);
+                break;
+                
+            case 'matches':
+                query = `
+                    SELECT DISTINCT p.*,
+                        u.name as user_name,
+                        u.photos[1] as user_photo,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
+                        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                        (SELECT COUNT(*) FROM shares WHERE post_id = p.id) as shares_count,
+                        EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
+                        TRUE as is_match
+                    FROM posts p
+                    JOIN users u ON p.user_id = u.id
+                    JOIN matches m ON (m.user1_id = $1 AND m.user2_id = p.user_id)
+                                  OR (m.user2_id = $1 AND m.user1_id = p.user_id)
+                    WHERE m.status = 'active'
+                    ORDER BY p.created_at DESC
+                    LIMIT $2 OFFSET $3
+                `;
+                params.push(limit, offset);
+                break;
+                
+            case 'new':
+                query = `
+                    SELECT DISTINCT p.*,
+                        u.name as user_name,
+                        u.photos[1] as user_photo,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
+                        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                        (SELECT COUNT(*) FROM shares WHERE post_id = p.id) as shares_count,
+                        EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
+                        TRUE as is_new
+                    FROM posts p
+                    JOIN users u ON p.user_id = u.id
+                    WHERE p.user_id != $1
+                        AND NOT EXISTS(
+                            SELECT 1 FROM friends 
+                            WHERE (user_id = $1 AND friend_id = p.user_id)
+                               OR (friend_id = $1 AND user_id = p.user_id)
+                        )
+                        AND NOT EXISTS(
+                            SELECT 1 FROM matches
+                            WHERE (user1_id = $1 AND user2_id = p.user_id)
+                               OR (user2_id = $1 AND user1_id = p.user_id)
+                        )
+                    ORDER BY p.created_at DESC
+                    LIMIT $2 OFFSET $3
+                `;
+                params.push(limit, offset);
+                break;
+                
+            default: // 'all'
+                query = `
+                    SELECT DISTINCT p.*,
+                        u.name as user_name,
+                        u.photos[1] as user_photo,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
+                        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                        (SELECT COUNT(*) FROM shares WHERE post_id = p.id) as shares_count,
+                        EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
+                        EXISTS(
+                            SELECT 1 FROM friends 
+                            WHERE ((user_id = $1 AND friend_id = p.user_id)
+                               OR (friend_id = $1 AND user_id = p.user_id))
+                              AND status = 'accepted'
+                        ) as is_friend,
+                        EXISTS(
+                            SELECT 1 FROM matches
+                            WHERE (user1_id = $1 AND user2_id = p.user_id)
+                               OR (user2_id = $1 AND user1_id = p.user_id)
+                        ) as is_match
+                    FROM posts p
+                    JOIN users u ON p.user_id = u.id
+                    ORDER BY p.created_at DESC
+                    LIMIT $2 OFFSET $3
+                `;
+                params.push(limit, offset);
+        }
+        
+        const result = await db.query(query, params);
+        
+        // Fetch comments for each post
+        const posts = await Promise.all(result.rows.map(async (post) => {
+            const commentsResult = await db.query(
+                `SELECT c.*, u.name as user_name 
+                 FROM comments c 
+                 JOIN users u ON c.user_id = u.id 
+                 WHERE c.post_id = $1 
+                 ORDER BY c.created_at ASC 
+                 LIMIT 50`,
+                [post.id]
+            );
+            return {
+                ...post,
+                comments: commentsResult.rows
+            };
+        }));
+        
+        res.json({ posts });
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        res.status(500).json({ error: 'Failed to fetch posts' });
+    }
+});
+
+// Create post
+app.post('/api/posts', authenticateToken, upload.single('media'), async (req, res) => {
+    try {
+        const { content } = req.body;
+        const userId = req.user.id;
+        
+        if (!content && !req.file) {
+            return res.status(400).json({ error: 'Post must have content or media' });
+        }
+        
+        const mediaUrl = req.file ? `/uploads/posts/${req.file.filename}` : null;
+        const mediaType = req.file?.mimetype.startsWith('video') ? 'video' : 'image';
+        
+        const result = await db.query(
+            `INSERT INTO posts (user_id, content, media_url, media_type) 
+             VALUES ($1, $2, $3, $4) 
+             RETURNING *`,
+            [userId, content, mediaUrl, mediaType]
+        );
+        
+        const post = result.rows[0];
+        const userResult = await db.query(
+            'SELECT name, photos FROM users WHERE id = $1',
+            [userId]
+        );
+        
+        post.user_name = userResult.rows[0].name;
+        post.user_photo = userResult.rows[0].photos?.[0];
+        post.likes_count = 0;
+        post.comments_count = 0;
+        post.shares_count = 0;
+        post.comments = [];
+        
+        // Notify connected users about new post
+        io.emit('new-post', { post });
+        
+        res.status(201).json({ post });
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).json({ error: 'Failed to create post' });
+    }
+});
+
+// Get single post
+app.get('/api/posts/:postId', authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+        
+        const result = await db.query(
+            `SELECT p.*, 
+                u.name as user_name, 
+                u.photos[1] as user_photo,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                (SELECT COUNT(*) FROM shares WHERE post_id = p.id) as shares_count,
+                EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked
+             FROM posts p
+             JOIN users u ON p.user_id = u.id
+             WHERE p.id = $2`,
+            [userId, postId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        
+        // Fetch comments
+        const commentsResult = await db.query(
+            `SELECT c.*, u.name as user_name 
+             FROM comments c 
+             JOIN users u ON c.user_id = u.id 
+             WHERE c.post_id = $1 
+             ORDER BY c.created_at ASC`,
+            [postId]
+        );
+        
+        const post = {
+            ...result.rows[0],
+            comments: commentsResult.rows
+        };
+        
+        res.json({ post });
+    } catch (error) {
+        console.error('Error fetching post:', error);
+        res.status(500).json({ error: 'Failed to fetch post' });
+    }
+});
+
+// Delete post
+app.delete('/api/posts/:postId', authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+        
+        const postResult = await db.query('SELECT * FROM posts WHERE id = $1', [postId]);
+        
+        if (postResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        
+        if (postResult.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: 'Not authorized to delete this post' });
+        }
+        
+        await db.query('DELETE FROM posts WHERE id = $1', [postId]);
+        
+        res.json({ message: 'Post deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        res.status(500).json({ error: 'Failed to delete post' });
+    }
+});
+
+// Like post
+app.post('/api/posts/:postId/like', authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+        
+        // Check if already liked
+        const existingLike = await db.query(
+            'SELECT * FROM likes WHERE user_id = $1 AND post_id = $2',
+            [userId, postId]
+        );
+        
+        if (existingLike.rows.length > 0) {
+            return res.status(400).json({ error: 'Post already liked' });
+        }
+        
+        await db.query(
+            'INSERT INTO likes (user_id, post_id) VALUES ($1, $2)',
+            [userId, postId]
+        );
+        
+        // Get updated likes count
+        const countResult = await db.query(
+            'SELECT COUNT(*) as count FROM likes WHERE post_id = $1',
+            [postId]
+        );
+        
+        // Notify post owner via socket
+        const postResult = await db.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
+        if (postResult.rows.length > 0) {
+            const postOwnerId = postResult.rows[0].user_id;
+            const postOwnerSocketId = connectedUsers.get(postOwnerId);
+            if (postOwnerSocketId && postOwnerId !== userId) {
+                io.to(postOwnerSocketId).emit('post-liked', {
+                    postId,
+                    likedBy: userId,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            likes_count: parseInt(countResult.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Error liking post:', error);
+        res.status(500).json({ error: 'Failed to like post' });
+    }
+});
+
+// Unlike post
+app.delete('/api/posts/:postId/like', authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+        
+        const result = await db.query(
+            'DELETE FROM likes WHERE user_id = $1 AND post_id = $2',
+            [userId, postId]
+        );
+        
+        if (result.rowCount === 0) {
+            return res.status(400).json({ error: 'Post not liked yet' });
+        }
+        
+        // Get updated likes count
+        const countResult = await db.query(
+            'SELECT COUNT(*) as count FROM likes WHERE post_id = $1',
+            [postId]
+        );
+        
+        res.json({ 
+            success: true, 
+            likes_count: parseInt(countResult.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Error unliking post:', error);
+        res.status(500).json({ error: 'Failed to unlike post' });
+    }
+});
+
+// Comment on post
+app.post('/api/posts/:postId/comment', authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { content } = req.body;
+        const userId = req.user.id;
+        
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: 'Comment content is required' });
+        }
+        
+        const result = await db.query(
+            `INSERT INTO comments (user_id, post_id, content) 
+             VALUES ($1, $2, $3) 
+             RETURNING *`,
+            [userId, postId, content]
+        );
+        
+        const comment = result.rows[0];
+        const userResult = await db.query(
+            'SELECT name FROM users WHERE id = $1',
+            [userId]
+        );
+        
+        comment.user_name = userResult.rows[0].name;
+        
+        // Get updated comments count
+        const countResult = await db.query(
+            'SELECT COUNT(*) as count FROM comments WHERE post_id = $1',
+            [postId]
+        );
+        
+        // Notify post owner via socket
+        const postResult = await db.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
+        if (postResult.rows.length > 0 && postResult.rows[0].user_id !== userId) {
+            const postOwnerId = postResult.rows[0].user_id;
+            const postOwnerSocketId = connectedUsers.get(postOwnerId);
+            if (postOwnerSocketId) {
+                io.to(postOwnerSocketId).emit('post-commented', {
+                    postId,
+                    commentId: comment.id,
+                    commentedBy: userId,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        // Broadcast comment to post room
+        io.to(`post-${postId}`).emit('new-comment', {
+            postId,
+            comment,
+            timestamp: Date.now()
+        });
+        
+        res.status(201).json({ 
+            comment,
+            comments_count: parseInt(countResult.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
+    }
+});
+
+// Delete comment
+app.delete('/api/posts/:postId/comment/:commentId', authenticateToken, async (req, res) => {
+    try {
+        const { postId, commentId } = req.params;
+        const userId = req.user.id;
+        
+        const commentResult = await db.query(
+            'SELECT * FROM comments WHERE id = $1 AND post_id = $2',
+            [commentId, postId]
+        );
+        
+        if (commentResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
+        
+        if (commentResult.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: 'Not authorized to delete this comment' });
+        }
+        
+        await db.query('DELETE FROM comments WHERE id = $1', [commentId]);
+        
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).json({ error: 'Failed to delete comment' });
+    }
+});
+
+// Share post
+app.post('/api/posts/:postId/share', authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+        
+        await db.query(
+            'INSERT INTO shares (user_id, post_id) VALUES ($1, $2)',
+            [userId, postId]
+        );
+        
+        // Get updated shares count
+        const countResult = await db.query(
+            'SELECT COUNT(*) as count FROM shares WHERE post_id = $1',
+            [postId]
+        );
+        
+        res.json({ 
+            success: true, 
+            shares_count: parseInt(countResult.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Error sharing post:', error);
+        res.status(500).json({ error: 'Failed to share post' });
+    }
+});
+
+// Search users for @mentions
+app.get('/api/posts/mentions/search', authenticateToken, async (req, res) => {
+    try {
+        const { q } = req.query;
+        
+        if (!q || q.length < 1) {
+            return res.json({ users: [] });
+        }
+        
+        const result = await db.query(
+            `SELECT id, name, photos[1] as photo 
+             FROM users 
+             WHERE name ILIKE $1 AND id != $2
+             LIMIT 5`,
+            [`%${q}%`, req.user.id]
+        );
+        
+        res.json({ users: result.rows });
+    } catch (error) {
+        console.error('Error searching users:', error);
+        res.status(500).json({ error: 'Failed to search users' });
+    }
+});
+
+// Get trending/popular posts
+app.get('/api/posts/trending', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { limit = 10 } = req.query;
+        
+        const result = await db.query(
+            `SELECT p.*, 
+                u.name as user_name, 
+                u.photos[1] as user_photo,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                (SELECT COUNT(*) FROM shares WHERE post_id = p.id) as shares_count,
+                EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as is_liked,
+                ((SELECT COUNT(*) FROM likes WHERE post_id = p.id) * 2 +
+                 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) * 3 +
+                 (SELECT COUNT(*) FROM shares WHERE post_id = p.id) * 4) as popularity_score
+             FROM posts p
+             JOIN users u ON p.user_id = u.id
+             WHERE p.created_at > NOW() - INTERVAL '24 hours'
+             ORDER BY popularity_score DESC
+             LIMIT $2`,
+            [userId, limit]
+        );
+        
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Error fetching trending posts:', error);
+        res.status(500).json({ error: 'Failed to fetch trending posts' });
+    }
+});
 
 // Test route
 app.get('/api/test', (req, res) => {
@@ -217,6 +785,32 @@ io.on('connection', (socket) => {
         } catch (error) {
             console.error('Error updating online status:', error);
         }
+    });
+
+    // ========== POSTS ROOM MANAGEMENT ==========
+    
+    // Join post room for real-time comment updates
+    socket.on('join-post', (postId) => {
+        const room = `post-${postId}`;
+        socket.join(room);
+        console.log(`📢 Socket ${socket.id} joined post room: ${room}`);
+    });
+    
+    // Leave post room
+    socket.on('leave-post', (postId) => {
+        const room = `post-${postId}`;
+        socket.leave(room);
+        console.log(`👋 Socket ${socket.id} left post room: ${room}`);
+    });
+    
+    // User is commenting on a post
+    socket.on('commenting', (data) => {
+        const { postId, userId } = data;
+        socket.to(`post-${postId}`).emit('user-commenting', {
+            postId,
+            userId,
+            timestamp: Date.now()
+        });
     });
 
     // ========== CHAT ROOM MANAGEMENT ==========
@@ -698,28 +1292,33 @@ io.on('connection', (socket) => {
         });
     });
 
-    // In your server.js, add:
-
-// Store call logs
-socket.on('save-call-log', async (data) => {
-    const { callerId, receiverId, callType, duration, status, startedAt } = data;
-    
-    try {
-        const result = await db.query(
-            `INSERT INTO call_logs (caller_id, receiver_id, call_type, duration, status, started_at, ended_at)
-             VALUES ($1, $2, $3, $4, $5, $6, NOW())
-             RETURNING *`,
-            [callerId, receiverId, callType, duration, status, startedAt]
-        );
+    // Store call logs
+    socket.on('save-call-log', async (data) => {
+        const { callerId, receiverId, callType, duration, status, startedAt } = data;
         
-        // Emit to both users for UI update
-        io.to(connectedUsers.get(callerId)).emit('call-log-updated', result.rows[0]);
-        io.to(connectedUsers.get(receiverId)).emit('call-log-updated', result.rows[0]);
-        
-    } catch (error) {
-        console.error('Error saving call log:', error);
-    }
-});
+        try {
+            const result = await db.query(
+                `INSERT INTO call_logs (caller_id, receiver_id, call_type, duration, status, started_at, ended_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                 RETURNING *`,
+                [callerId, receiverId, callType, duration, status, startedAt]
+            );
+            
+            // Emit to both users for UI update
+            const callerSocketId = connectedUsers.get(callerId);
+            const receiverSocketId = connectedUsers.get(receiverId);
+            
+            if (callerSocketId) {
+                io.to(callerSocketId).emit('call-log-updated', result.rows[0]);
+            }
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('call-log-updated', result.rows[0]);
+            }
+            
+        } catch (error) {
+            console.error('Error saving call log:', error);
+        }
+    });
 
     // Cancel call (before it's answered)
     socket.on('cancel-call', ({ to, from }) => {
@@ -875,6 +1474,7 @@ server.listen(PORT, () => {
     console.log(`❤️ Health check: http://localhost:${PORT}/api/health`);
     console.log(`💬 WebSocket ready for real-time chat`);
     console.log(`📞 WebRTC signaling ready for calls`);
+    console.log(`📝 Community posts API ready`);
     console.log(`🕐 Server started at: ${new Date().toISOString()}`);
 });
 

@@ -428,6 +428,264 @@ app.post('/api/posts/:postId/share', auth, async (req, res) => {
     }
 });
 
+// ========== ENHANCED USER DISCOVERY WITH PROPER FILTERING ==========
+
+// GET /api/users/discover - Enhanced with filtering
+app.get('/api/users/discover', auth, async (req, res) => {
+    try {
+        const userId = parseInt(req.user.id);
+        const { filter, search } = req.query;
+        
+        console.log('🔍 Discovery request - User:', userId, 'Filter:', filter, 'Search:', search);
+        
+        let query;
+        let params = [userId];
+        
+        // Base query that gets all users except current user
+        const baseQuery = `
+            SELECT 
+                u.id, u.name, u.age, u.bio, u.photos, u.gender, u.online_status,
+                u.is_premium, u.is_verified, u.last_active, u.created_at,
+                -- Get swipe status
+                COALESCE(s.action, null) as my_swipe_action,
+                -- Check if matched
+                CASE 
+                    WHEN COALESCE(s.action, null) = 'like' AND s2.action = 'like' THEN true
+                    ELSE false
+                END as is_matched,
+                -- Check if friends
+                EXISTS(
+                    SELECT 1 FROM friend_requests fr 
+                    WHERE ((fr.sender_id = u.id AND fr.receiver_id = $1) 
+                        OR (fr.sender_id = $1 AND fr.receiver_id = u.id))
+                    AND fr.status = 'accepted'
+                ) as is_friend,
+                -- Check if friend request pending
+                EXISTS(
+                    SELECT 1 FROM friend_requests fr 
+                    WHERE fr.sender_id = $1 AND fr.receiver_id = u.id 
+                    AND fr.status = 'pending'
+                ) as friend_request_sent,
+                EXISTS(
+                    SELECT 1 FROM friend_requests fr 
+                    WHERE fr.sender_id = u.id AND fr.receiver_id = $1 
+                    AND fr.status = 'pending'
+                ) as friend_request_received,
+                -- Check if has active stories
+                EXISTS(
+                    SELECT 1 FROM statuses st 
+                    WHERE st.user_id = u.id 
+                    AND st.expires_at > NOW()
+                ) as has_story
+            FROM users u
+            LEFT JOIN swipes s ON s.swiper_id = $1 AND s.swiped_id = u.id
+            LEFT JOIN swipes s2 ON s2.swiper_id = u.id AND s2.swiped_id = $1 AND s2.action = 'like'
+            WHERE u.id != $1
+        `;
+        
+        switch(filter) {
+            case 'friends':
+                // Only show friends
+                query = `${baseQuery} 
+                    AND EXISTS(
+                        SELECT 1 FROM friend_requests fr 
+                        WHERE ((fr.sender_id = u.id AND fr.receiver_id = $1) 
+                            OR (fr.sender_id = $1 AND fr.receiver_id = u.id))
+                        AND fr.status = 'accepted'
+                    )
+                `;
+                break;
+                
+            case 'matches':
+                // Only show mutual matches
+                query = `${baseQuery}
+                    AND COALESCE(s.action, null) = 'like' 
+                    AND s2.action = 'like'
+                `;
+                break;
+                
+            case 'new':
+                // Only show users with NO interaction
+                query = `${baseQuery}
+                    AND s.action IS NULL
+                    AND NOT EXISTS(
+                        SELECT 1 FROM friend_requests fr 
+                        WHERE ((fr.sender_id = u.id AND fr.receiver_id = $1) 
+                            OR (fr.sender_id = $1 AND fr.receiver_id = u.id))
+                    )
+                `;
+                break;
+                
+            case 'liked':
+                // Users you liked but haven't matched yet
+                query = `${baseQuery}
+                    AND s.action = 'like'
+                    AND (s2.action IS NULL OR s2.action = 'pass')
+                `;
+                break;
+                
+            default:
+                // All users
+                query = baseQuery;
+                break;
+        }
+        
+        // Add search filter
+        if (search) {
+            query += ` AND (u.name ILIKE $${params.length + 1} OR u.bio ILIKE $${params.length + 1})`;
+            params.push(`%${search}%`);
+        }
+        
+        // Order by relevance
+        query += ` ORDER BY u.online_status DESC, u.last_active DESC NULLS LAST, u.created_at DESC LIMIT 100`;
+        
+        const result = await db.query(query, params);
+        
+        // Transform photos to ensure they're arrays
+        const users = result.rows.map(user => ({
+            ...user,
+            photos: Array.isArray(user.photos) ? user.photos : (user.photos ? [user.photos] : []),
+            // Add relationship flags for frontend
+            relationship: {
+                is_friend: user.is_friend,
+                is_matched: user.is_matched,
+                is_new: !user.my_swipe_action && !user.is_friend,
+                has_liked: user.my_swipe_action === 'like',
+                has_passed: user.my_swipe_action === 'pass',
+                friend_request_pending: user.friend_request_sent || user.friend_request_received
+            }
+        }));
+        
+        // Get counts for all categories
+        const counts = await getCategoryCounts(userId);
+        
+        res.json({
+            users,
+            counts,
+            filter: filter || 'all'
+        });
+        
+    } catch (error) {
+        console.error('❌ Error in discover:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+// Helper function to get category counts
+async function getCategoryCounts(userId) {
+    try {
+        const countsResult = await db.query(`
+            SELECT
+                (SELECT COUNT(*) FROM users WHERE id != $1) as total,
+                (SELECT COUNT(*) FROM users u 
+                 WHERE u.id != $1 
+                 AND u.online_status = true) as online,
+                (SELECT COUNT(*) FROM users u
+                 INNER JOIN swipes s1 ON s1.swiped_id = u.id AND s1.swiper_id = $1 AND s1.action = 'like'
+                 INNER JOIN swipes s2 ON s2.swiper_id = u.id AND s2.swiped_id = $1 AND s2.action = 'like'
+                 WHERE u.id != $1) as matches,
+                (SELECT COUNT(*) FROM users u
+                 WHERE u.id != $1
+                 AND NOT EXISTS (SELECT 1 FROM swipes s WHERE s.swiper_id = $1 AND s.swiped_id = u.id)
+                 AND NOT EXISTS (SELECT 1 FROM friend_requests fr WHERE 
+                     (fr.sender_id = $1 AND fr.receiver_id = u.id) OR 
+                     (fr.sender_id = u.id AND fr.receiver_id = $1))
+                ) as new_people,
+                (SELECT COUNT(*) FROM friend_requests fr
+                 INNER JOIN users u ON 
+                     (CASE WHEN fr.sender_id = $1 THEN fr.receiver_id ELSE fr.sender_id END) = u.id
+                 WHERE (fr.sender_id = $1 OR fr.receiver_id = $1)
+                 AND fr.status = 'accepted'
+                 AND u.id != $1) as friends
+        `, [userId]);
+        
+        return countsResult.rows[0];
+    } catch (error) {
+        console.error('Error getting counts:', error);
+        return { total: 0, online: 0, matches: 0, new_people: 0, friends: 0 };
+    }
+}
+
+// GET /api/posts/feed - Get posts (separate from user discovery)
+app.get('/api/posts/feed', auth, async (req, res) => {
+    try {
+        const userId = parseInt(req.user.id);
+        const { page = 1, limit = 20 } = req.query;
+        const offset = (page - 1) * limit;
+        
+        const result = await db.query(`
+            SELECT 
+                p.id, p.user_id, p.content, p.media_url, p.media_type, 
+                p.location, p.created_at, p.updated_at,
+                u.name as user_name, u.photos as user_photos,
+                COALESCE(likes.count, 0) as likes_count,
+                COALESCE(comments.count, 0) as comments_count,
+                COALESCE(shares.count, 0) as shares_count,
+                EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = $1) as is_liked
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN (SELECT post_id, COUNT(*) as count FROM likes GROUP BY post_id) likes ON likes.post_id = p.id
+            LEFT JOIN (SELECT post_id, COUNT(*) as count FROM comments GROUP BY post_id) comments ON comments.post_id = p.id
+            LEFT JOIN (SELECT post_id, COUNT(*) as count FROM shares GROUP BY post_id) shares ON shares.post_id = p.id
+            ORDER BY p.created_at DESC
+            LIMIT $2 OFFSET $3
+        `, [userId, limit, offset]);
+        
+        // Get total count for pagination
+        const countResult = await db.query('SELECT COUNT(*) FROM posts');
+        const totalPosts = parseInt(countResult.rows[0].count);
+        
+        // Fetch comments for each post
+        const posts = await Promise.all(result.rows.map(async (row) => {
+            let postComments = [];
+            try {
+                const commentsResult = await db.query(`
+                    SELECT c.id, c.user_id, c.content, c.created_at, u.name as user_name
+                    FROM comments c
+                    JOIN users u ON c.user_id = u.id
+                    WHERE c.post_id = $1
+                    ORDER BY c.created_at ASC
+                    LIMIT 5
+                `, [row.id]);
+                postComments = commentsResult.rows;
+            } catch (err) {
+                // Comments table might not exist yet
+            }
+            
+            return {
+                id: row.id,
+                user_id: row.user_id,
+                content: row.content,
+                media_url: row.media_url,
+                media_type: row.media_type,
+                location: row.location,
+                created_at: row.created_at,
+                user_name: row.user_name || 'Anonymous',
+                user_photo: Array.isArray(row.user_photos) ? row.user_photos[0] : row.user_photos,
+                likes_count: parseInt(row.likes_count) || 0,
+                comments_count: parseInt(row.comments_count) || 0,
+                shares_count: parseInt(row.shares_count) || 0,
+                is_liked: row.is_liked || false,
+                comments: postComments
+            };
+        }));
+        
+        res.json({
+            posts,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalPosts,
+                hasMore: offset + limit < totalPosts
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Error fetching post feed:', error);
+        res.status(500).json({ error: 'Failed to fetch posts' });
+    }
+});
+
 // DELETE /api/posts/:postId
 app.delete('/api/posts/:postId', auth, async (req, res) => {
     try {

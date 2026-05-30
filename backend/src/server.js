@@ -116,14 +116,41 @@ app.use('/api/friends', friendsRouter);
 
 // ========== COMMUNITY POSTS ROUTES ==========
 
-// Auth middleware
+// Auth middleware - FIXED to properly extract user ID from JWT
 const auth = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Access token required' });
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-        req.user = user;
+    
+    if (!token) {
+        console.log('❌ No token provided');
+        return res.status(401).json({ error: 'Access token required' });
+    }
+    
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            console.log('❌ JWT verification failed:', err.message);
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
+        
+        // Log the decoded token to see its structure
+        console.log('🔑 JWT decoded payload:', JSON.stringify(decoded));
+        
+        // Try all possible ID field names
+        const userId = decoded.id || decoded.userId || decoded.user_id || decoded.sub;
+        
+        console.log('🔑 Extracted user ID:', userId, 'Type:', typeof userId);
+        
+        if (!userId) {
+            console.log('❌ No user ID found in token. Token fields:', Object.keys(decoded));
+            return res.status(401).json({ error: 'Invalid token - no user ID found' });
+        }
+        
+        req.user = { 
+            id: parseInt(userId, 10),
+            ...decoded 
+        };
+        
+        console.log('✅ Auth successful for user:', req.user.id);
         next();
     });
 };
@@ -181,7 +208,7 @@ ensureTablesExist();
 // GET /api/posts - Fetch posts with counts
 app.get('/api/posts', auth, async (req, res) => {
     try {
-        console.log('📥 Fetching posts...');
+        console.log('📥 Fetching posts for user:', req.user.id);
         const userId = req.user.id;
         
         const result = await db.query(`
@@ -240,13 +267,21 @@ app.get('/api/posts', auth, async (req, res) => {
     }
 });
 
-// POST /api/posts - Create post
+// POST /api/posts - Create post (FIXED - ensures userId is integer)
 app.post('/api/posts', auth, upload.single('media'), async (req, res) => {
     try {
         const { content } = req.body;
         const userId = req.user.id;
         
-        console.log('📝 Creating post - userId:', userId, 'hasContent:', !!content, 'hasFile:', !!req.file);
+        console.log('📝 POST - userId:', userId, 'Type:', typeof userId);
+        
+        // Convert to integer and validate
+        const userIdInt = parseInt(userId, 10);
+        
+        if (!userIdInt || isNaN(userIdInt)) {
+            console.error('❌ Invalid user ID:', userId);
+            return res.status(401).json({ error: 'Invalid user ID: ' + userId });
+        }
         
         if (!content && !req.file) {
             return res.status(400).json({ error: 'Post must have content or media' });
@@ -255,13 +290,28 @@ app.post('/api/posts', auth, upload.single('media'), async (req, res) => {
         const mediaUrl = req.file ? `/uploads/posts/${req.file.filename}` : null;
         const mediaType = req.file ? (req.file.mimetype.startsWith('video') ? 'video' : 'image') : null;
         
+        console.log('📝 Inserting post - userIdInt:', userIdInt, 'content:', content?.substring(0, 50));
+        
         const result = await db.query(
             `INSERT INTO posts (user_id, content, media_url, media_type) VALUES ($1, $2, $3, $4) RETURNING *`,
-            [userId, content || '', mediaUrl, mediaType]
+            [userIdInt, content || '', mediaUrl, mediaType]
         );
         
         const post = result.rows[0];
-        const userResult = await db.query('SELECT name, photos FROM users WHERE id = $1', [userId]);
+        
+        // Get user info
+        let userName = 'Unknown';
+        let userPhoto = null;
+        try {
+            const userResult = await db.query('SELECT name, photos FROM users WHERE id = $1', [userIdInt]);
+            if (userResult.rows.length > 0) {
+                userName = userResult.rows[0].name || 'Unknown';
+                const photos = userResult.rows[0].photos;
+                userPhoto = Array.isArray(photos) ? photos[0] : photos;
+            }
+        } catch (err) {
+            console.log('⚠️ Could not fetch user info:', err.message);
+        }
         
         const responsePost = {
             id: post.id,
@@ -270,8 +320,8 @@ app.post('/api/posts', auth, upload.single('media'), async (req, res) => {
             media_url: post.media_url,
             media_type: post.media_type,
             created_at: post.created_at,
-            user_name: userResult.rows[0]?.name || 'Unknown',
-            user_photo: Array.isArray(userResult.rows[0]?.photos) ? userResult.rows[0].photos[0] : (userResult.rows[0]?.photos || null),
+            user_name: userName,
+            user_photo: userPhoto,
             likes_count: 0,
             comments_count: 0,
             shares_count: 0,
@@ -279,13 +329,13 @@ app.post('/api/posts', auth, upload.single('media'), async (req, res) => {
             comments: []
         };
         
-        // Notify connected users
         io.emit('new-post', { post: responsePost });
         
         console.log('✅ Post created:', responsePost.id);
         res.status(201).json({ post: responsePost });
+        
     } catch (error) {
-        console.error('❌ Error creating post:', error.message);
+        console.error('❌ POST ERROR:', error.message);
         console.error('❌ Full error:', error);
         res.status(500).json({ error: 'Failed to create post: ' + error.message });
     }
@@ -299,7 +349,7 @@ app.post('/api/posts/:postId/like', auth, async (req, res) => {
         
         await db.query(
             'INSERT INTO likes (user_id, post_id) VALUES ($1, $2) ON CONFLICT (user_id, post_id) DO NOTHING',
-            [userId, postId]
+            [parseInt(userId), parseInt(postId)]
         );
         
         const countResult = await db.query('SELECT COUNT(*) as count FROM likes WHERE post_id = $1', [postId]);
@@ -318,7 +368,7 @@ app.delete('/api/posts/:postId/like', auth, async (req, res) => {
         const { postId } = req.params;
         const userId = req.user.id;
         
-        await db.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
+        await db.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [parseInt(userId), parseInt(postId)]);
         
         const countResult = await db.query('SELECT COUNT(*) as count FROM likes WHERE post_id = $1', [postId]);
         const likesCount = parseInt(countResult.rows[0].count);
@@ -343,11 +393,11 @@ app.post('/api/posts/:postId/comment', auth, async (req, res) => {
         
         const result = await db.query(
             'INSERT INTO comments (user_id, post_id, content) VALUES ($1, $2, $3) RETURNING *',
-            [userId, postId, content.trim()]
+            [parseInt(userId), parseInt(postId), content.trim()]
         );
         
         const comment = result.rows[0];
-        const userResult = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
+        const userResult = await db.query('SELECT name FROM users WHERE id = $1', [parseInt(userId)]);
         comment.user_name = userResult.rows[0]?.name || 'Unknown';
         
         const countResult = await db.query('SELECT COUNT(*) as count FROM comments WHERE post_id = $1', [postId]);
@@ -366,7 +416,7 @@ app.post('/api/posts/:postId/share', auth, async (req, res) => {
         const { postId } = req.params;
         const userId = req.user.id;
         
-        await db.query('INSERT INTO shares (user_id, post_id) VALUES ($1, $2)', [userId, postId]);
+        await db.query('INSERT INTO shares (user_id, post_id) VALUES ($1, $2)', [parseInt(userId), parseInt(postId)]);
         
         const countResult = await db.query('SELECT COUNT(*) as count FROM shares WHERE post_id = $1', [postId]);
         const sharesCount = parseInt(countResult.rows[0].count);
@@ -386,7 +436,7 @@ app.delete('/api/posts/:postId', auth, async (req, res) => {
         
         const postResult = await db.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
         if (postResult.rows.length === 0) return res.status(404).json({ error: 'Post not found' });
-        if (postResult.rows[0].user_id !== userId) return res.status(403).json({ error: 'Not authorized' });
+        if (postResult.rows[0].user_id !== parseInt(userId)) return res.status(403).json({ error: 'Not authorized' });
         
         await db.query('DELETE FROM posts WHERE id = $1', [postId]);
         res.json({ message: 'Post deleted successfully' });
